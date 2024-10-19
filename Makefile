@@ -34,7 +34,7 @@ defined_types.o: kind_numbers.o
 tree_routines.o: defined_types.o
 trees.o: defined_types.o parameter_modules.o   memory_modules.o tree_routines.o modified_merger_tree.o parameters.o
 
-#Rule for making the executable 
-trees.exe: $(TREE_OBJS) trees.o 
+#Rule for making the executable
+trees.exe: $(TREE_OBJS) trees.o
 	$(f90invoke)  $(TREE_OBJS) trees.o -o trees.exe $(F90)
 
