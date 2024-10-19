@@ -1,7 +1,7 @@
 # Compiler options inclusion
 # Compile and Compiler flags
-f90invoke = f90
-F90       =  -fast
+f90invoke = gfortran
+F90       = -O2
 
 
 # General rules
@@ -9,10 +9,10 @@ F90       =  -fast
 .SUFFIXES: .exe .o .F90 .f90 .mod .f
 
 .F90.o:
-	$(f90invoke) -c $< -o $*.o $(F90) 
+	$(f90invoke) -c $< -o $*.o $(F90)
 
 .f90.o:
-	$(f90invoke) -c $< -o $*.o $(F90) 
+	$(f90invoke) -c $< -o $*.o $(F90)
 
 .f.o:
 	$(f90invoke) -c $< -o $*.o $(F90)
