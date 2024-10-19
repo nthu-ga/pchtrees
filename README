@@ -1,0 +1,118 @@
+README contains 3 sections
+
+1) How to compile make the merger tree code
+2) How to make use of the code
+3) The Format used to store the tree
+
+Note:  This code was updated on 13th November 2007.  Prior to that
+the split_PCH.F90 algorithm had a small error. After correcting the
+error we redid the fits and got slightly different parameters.
+The version of the paper stating the correct parameter values 
+and corresponding plots is that published in MNRAS and version 3 on astro-ph.
+The new parameters are correctly set in trees.F90 .
+
+
+----------------------------------------------------------------------
+1) How to compile make the merger tree code
+============================================
+
+Code.tar.gz  -- contains all the code, Makefile and data
+                files you need.
+
+Download Code.tar.gz and unpack using 
+      gunzip Code.tar.gz
+      tar xvf Code.tar
+
+Edit the first lines in the Makefile to point to your favoured F90 compiler
+and to select the compiler flags you require
+
+
+Compile the code using
+       make trees.exe
+
+
+This should compile all the code and create an executable, trees.exe,
+which when run should produce output similar to:
+
+The redshifts at which the tree will be stored:
+z=  0.000 at which deltcrit= 1.674
+z=  0.444 at which deltcrit= 2.075
+z=  0.889 at which deltcrit= 2.544
+z=  1.333 at which deltcrit= 3.051
+z=  1.778 at which deltcrit= 3.578
+z=  2.222 at which deltcrit= 4.117
+z=  2.667 at which deltcrit= 4.662
+z=  3.111 at which deltcrit= 5.212
+z=  3.556 at which deltcrit= 5.765
+z=  4.000 at which deltcrit= 6.318
+main storage=     7.4 Mbytes
+make_tree(): internal storage =   0.025 Mbytes
+internal halo tree storage=   0.050 Mbytes
+internal halo tree storage=   0.099 Mbytes
+internal halo tree storage=   0.198 Mbytes
+ made a tree 1
+ Counting the number of nodes in the tree.
+number of nodes in tree  1 is      130230
+ Example information from the tree:
+ Base node:
+   mass= 1.0E+14  z=  0.0E+0  number of progenitors  4399
+ First progenitor:
+   mass= 6.822631E+13  z=  0.44444441
+   mass= 1.5742615E+13  z=  0.44444441
+ made a tree 2
+ Counting the number of nodes in the tree.
+number of nodes in tree  2 is      131346
+ Example information from the tree:
+ Base node:
+   mass= 1.0E+14  z=  0.0E+0  number of progenitors  4400
+ First progenitor:
+   mass= 8.3043544E+13  z=  0.44444441
+   mass= 1.2592812E+12  z=  0.44444441
+
+
+---------------------------------------------------------------------------
+
+
+2) How to make use of the code
+==============================
+
+The program trees.f90 that you compiled above is just an example
+code. It sets up all the cosmological and other parameters that
+the trees depend upon, it generates a tree, counts the number
+of the nodes in the tree, outputs some information on the first
+three nodes in the tree and repeats this for a second tree before stopping.
+
+To do something useful with the code you could insert calls to you
+own routines in place of the code that simply counts the number of nodes.
+ 
+
+----------------------------------------------------------------------
+
+3) The Format used to store the tree
+====================================
+
+The tree itself is stored in the array MergerTree .
+This is an array of tree nodes each is of the "defined type"
+TreeNode that is defined in defined_types.F90
+This means that each node has the components 
+
+%mhalo  -- mass of the progenitor halo
+%jlevel -- indicates the halo exists a the redshift corresponding to
+           expansion factor alev(jlevel)
+%nchild -- the number of progenitors of children this halo has
+%parent -- pointer to node that is the parent (descendant) of this halo
+%child -- pointer to node that is the first child (most massive progenitor) 
+           of this halo
+%sibling --pointer to node the next most massive sibling of this halo
+           (next most massive progenitor halo that shares the same 
+            descendent halo)
+
+There are also other components that used in the GALFORM code, but
+undefined in these simple dark matter trees.
+
+
+An example of walking around the tree is given by the code in
+trees.F90 that counts the number of nodes in the tree.
+It uses the function Walk_Tree() to walk around the tree
+and there are other useful routines of this nature in the
+file tree_routines.F90.
