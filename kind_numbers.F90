@@ -45,7 +45,7 @@ CONTAINS
     IF(BIT_SIZE(i1).NE.8)THEN
        WRITE(*,*)'check_kind_numbers(): WARNING - INTEGER*1 not available'
        IF(PRESENT(need_i1))THEN
-          IF(need_i1)STOP'check_kind_numbers(): FATAL - Required datatype INTEGER*1 is not available'
+          IF (need_i1) STOP 'check_kind_numbers(): FATAL - Required datatype INTEGER*1 is not available'
        END IF
        isize = BIT_SIZE(i1) / 8
        WRITE(*,*)'Using INTEGER*',isize,' instead'
@@ -54,7 +54,7 @@ CONTAINS
     IF(BIT_SIZE(i2).NE.16)THEN
        WRITE(*,*)'check_kind_numbers(): WARNING - INTEGER*2 not available'
        IF(PRESENT(need_i2))THEN
-          IF(need_i2)STOP'check_kind_numbers(): FATAL - Required datatype INTEGER*2 is not available'
+          IF (need_i2) STOP 'check_kind_numbers(): FATAL - Required datatype INTEGER*2 is not available'
        END IF
        isize = BIT_SIZE(i2) / 8
        WRITE(*,*)'Using INTEGER*',isize,' instead'
@@ -63,7 +63,7 @@ CONTAINS
     IF(BIT_SIZE(i4).NE.32)THEN
        WRITE(*,*)'check_kind_numbers(): WARNING - INTEGER*4 not available'
        IF(PRESENT(need_i4))THEN
-          IF(need_i4)STOP'check_kind_numbers(): FATAL - Required datatype INTEGER*4 is not available'
+          IF (need_i4) STOP 'check_kind_numbers(): FATAL - Required datatype INTEGER*4 is not available'
        END IF
        isize = BIT_SIZE(i4) / 8
        WRITE(*,*)'Using INTEGER*',isize,' instead'
@@ -72,12 +72,12 @@ CONTAINS
     IF(BIT_SIZE(i8).NE.64)THEN
        WRITE(*,*)'check_kind_numbers(): WARNING - INTEGER*8 not available'
        IF(PRESENT(need_i8))THEN
-          IF(need_i8)STOP'check_kind_numbers(): FATAL - Required datatype INTEGER*8 is not available'
+          IF (need_i8) STOP 'check_kind_numbers(): FATAL - Required datatype INTEGER*8 is not available'
        END IF
        isize = BIT_SIZE(i8) / 8
        WRITE(*,*)'Using INTEGER*',isize,' instead'
     END IF
-    
+
     IF(real8byte.EQ.real4byte)WRITE(*,*)'check_kind_numbers(): WARNING - REAL*4 not available'
 
     RETURN
