@@ -1,7 +1,7 @@
 program tree
 
  use Defined_Types ! defined_types.F90
- use Cosmological_Parameters ! parameter_modules.F90
+ use Cosmological_Parameters ! cosmological_parameters.F90
  use Power_Spectrum_Parameters ! parameters.F90
  use Tree_Memory_Arrays ! memory_modules.F90
  use Tree_Memory_Arrays_Passable ! memory_modules.F90

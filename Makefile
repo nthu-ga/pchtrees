@@ -18,7 +18,7 @@ F90       = -O2
 	$(f90invoke) -c $< -o $*.o $(F90)
 
 # Object code list
-TREE_OBJS =  num_pars.o defined_types.o kind_numbers.o parameter_modules.o   memory_modules.o tree_routines.o modified_merger_tree.o deltcrit.o memory.o sigmacdm_spline.o interp.o locate.o hyperbolic.o split_PCH.o ran3.o spline.o make_tree.o indexxx.o transfer_function.o unresolved_mass.o parameters.o
+TREE_OBJS = num_pars.o defined_types.o kind_numbers.o halo_mass_function.o run_statistics.o cosmological_parameters.o memory_modules.o tree_routines.o modified_merger_tree.o deltcrit.o memory.o sigmacdm_spline.o interp.o locate.o hyperbolic.o split_PCH.o ran3.o spline.o make_tree.o indexxx.o transfer_function.o unresolved_mass.o parameters.o
 
 
 all:	trees.exe
@@ -32,7 +32,7 @@ sigmacdm_spline.o: num_pars.o parameters.o
 deltcrit.o: num_pars.o
 defined_types.o: kind_numbers.o
 tree_routines.o: defined_types.o
-trees.o: defined_types.o parameter_modules.o   memory_modules.o tree_routines.o modified_merger_tree.o parameters.o
+trees.o: defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o parameters.o cosmological_parameters.o
 
 #Rule for making the executable
 trees.exe: $(TREE_OBJS) trees.o
