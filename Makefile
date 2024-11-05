@@ -1,7 +1,7 @@
 # Compiler options inclusion
 # Compile and Compiler flags
 f90invoke = gfortran
-F90       = -O2
+F90       = -O2 -Wall -Wextra -Wpedantic -fimplicit-none
 
 
 # General rules
