@@ -14,8 +14,9 @@
 ! dz=zmax/NTAB should be small so that the trapezium rule is accurate for z>dz.
 
 real function J_UNRESOLVED(z)
-    implicit none
     use Modified_Merger_Tree
+
+    implicit none
     real, intent(in) :: z
     real, parameter :: EPS=1.0e-05, zmax=10.0
     real :: dz
