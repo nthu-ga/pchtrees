@@ -40,11 +40,11 @@ implicit none
 ! and the fits redone. Using this code and these new parameters will
 ! produce near identical results to the old code with the old parameters.
 ! (passed in module Modified_Merger_Tree and Time_Parameters)
- G0=0.57
- gamma_1=0.38
- gamma_2=-0.01
- eps1=0.1        
- eps2=0.1        
+ !G0=0.57
+ !gamma_1=0.38
+ !gamma_2=-0.01
+ !eps1=0.1        
+ !eps2=0.1        
 
 !
 ! Cosmological and Power Spectrum parameters

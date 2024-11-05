@@ -31,6 +31,6 @@ end module Power_Spectrum_Parameters
 
 module Time_Parameters
   ! Parameters used in making binary splits in the merger tree
-  real eps1,eps2
+  !real eps1,eps2
   integer istep
 end module Time_Parameters

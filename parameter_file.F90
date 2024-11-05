@@ -2,7 +2,7 @@
 module Parameter_File
 
   public :: parse_parameter_file
-  public :: runtime
+  public :: runtime, pa_tree
 
   type Parameters_Runtime
     character(len=:), allocatable :: data_path
@@ -10,7 +10,17 @@ module Parameter_File
 
   type(Parameters_Runtime) :: runtime
 
-contains
+  type Parameters_Tree
+   real :: G0 = 0.57
+   real :: gamma_1 = 0.38
+   real :: gamma_2 = -0.01
+   real :: eps1 = 0.1
+   real :: eps2 = 0.1
+  end type Parameters_Tree
+
+  type(Parameters_Tree) :: pa_tree
+
+  contains
 
 subroutine parse_parameter_file()
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
@@ -53,6 +63,24 @@ subroutine parse_parameter_file()
       call get_value(child, 'data_path', runtime%data_path, './')
       print '(2a)', 'Data path: ', runtime%data_path
     end if
-end subroutine parse_parameter_file
+
+    ! Get [tree] section.
+    call get_value(table, 'treee', child, requested=.false.)
+
+    if (associated(child)) then
+      ! Parameters used to modify the merger rate used in split.F90
+      ! to be slightly different to the standard Press-Schechter formula
+      !
+      ! The modify factor is
+      ! G0 [sigma(m1)/sigma(m2)]^gamma_1 [w/sigma(m2)]^gamma_2
+
+      call get_value(child, 'G0',      pa_tree%G0,       0.57)
+      call get_value(child, 'gamma_1', pa_tree%gamma_1,  0.38)
+      call get_value(child, 'gamma_2', pa_tree%gamma_2, -0.01)
+      call get_value(child, 'eps1',    pa_tree%eps1,     0.1)
+      call get_value(child, 'eps2',    pa_tree%eps2,     0.1)
+
+    end if
+ end subroutine parse_parameter_file
 
 end module Parameter_File
