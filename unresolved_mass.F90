@@ -16,14 +16,17 @@
 !       accurate for z>dz.
 !
 real function J_UNRESOLVED(z)
+    implicit none
 use Modified_Merger_Tree
 real, intent(in) :: z
 real, parameter :: EPS=1.0e-05,zmax=10.0
 real :: dz
+real :: h
 integer :: i
 integer, parameter :: NTAB=1000
 integer, save :: ifirst=0
 real, save :: J_tab(NTAB),z_tab(NTAB),inv_dz
+
 
 if (abs(gamma_1).gt.EPS) then !gamma_1.ne.0
    if (ifirst.eq.0) then !on the first call tabulate the integral.
