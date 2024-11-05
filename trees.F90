@@ -8,6 +8,7 @@ program tree
  use Time_Parameters ! parameters.F90
  use Tree_Routines ! tree_routines.F90
  use Modified_Merger_Tree ! modified_merger_tree.F90
+ use Parameter_File
 
 implicit none
 
@@ -22,7 +23,9 @@ implicit none
   integer :: iter,iseed0,iseed
   EXTERNAL deltcrit,sigmacdm,split
   real :: dc
-!
+
+  call parse_parameter_file()
+
 !Mass of halo for which the tree is to be grown. The mass resolution of
 !the tree and the number of trees to grow. 
  mphalo=1.0e+14  !halo mass at base of tree
