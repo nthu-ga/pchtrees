@@ -1,3 +1,13 @@
+# APC
+
+To compile:
+
+cd builddir
+meson compile
+
+
+# PCH Readme
+
 README contains 3 sections
 
 1) How to compile make the merger tree code
