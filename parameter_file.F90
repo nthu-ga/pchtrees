@@ -74,6 +74,21 @@ subroutine parse_parameter_file()
       ! The modify factor is
       ! G0 [sigma(m1)/sigma(m2)]^gamma_1 [w/sigma(m2)]^gamma_2
 
+      ! Parameters of the Merger Tree Algorithm as defined in Parkinson, Cole
+      ! and Helly (2007arXiv0708.138 version 3 and in MNRAS paper).
+
+      ! These values supercede the values given in the original astro-ph posting
+      ! due to a small error in the code being identified. In this version of the
+      ! code the error has been rectified and the fits redone. Using this code
+      ! and these new parameters will produce near identical results to the old
+      ! code with the old parameters.
+
+      ! G0 = 0.57
+      ! gamma_1 = 0.38
+      ! gamma_2 = -0.01
+      ! eps1 = 0.1
+      ! eps2 = 0.1
+
       call get_value(child, 'G0',      pa_tree%G0,       0.57)
       call get_value(child, 'gamma_1', pa_tree%gamma_1,  0.38)
       call get_value(child, 'gamma_2', pa_tree%gamma_2, -0.01)

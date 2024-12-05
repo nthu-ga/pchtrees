@@ -14,7 +14,8 @@ implicit none
 
   type (TreeNode), pointer :: This_Node
   integer :: i,j,count,ntree
-  integer, parameter :: long = selected_real_kind(9,99)
+  ! APC seems this is not used?
+  ! integer, parameter :: long = selected_real_kind(9,99)
   real, allocatable  :: wlev(:),alev(:)
   integer, allocatable  :: ifraglev(:)
   real :: mphalo,mres,ahalo,deltcrit,sigmacdm,zmax
@@ -31,20 +32,6 @@ implicit none
  mphalo=1.0e+14  !halo mass at base of tree
  mres = 1.0e+08  !mass resolution
  ntree=2         !number of trees
-
-! Parameters of the Merger Tree Algorithm as defined in 
-! Parkinson, Cole and Helly (2007arXiv0708.138 version 3 and in MNRAS paper)
-! These values supercede the values given in the
-! original astro-ph posting due to a small error in the code being
-! identified. In this version of the code the error has been rectified
-! and the fits redone. Using this code and these new parameters will
-! produce near identical results to the old code with the old parameters.
-! (passed in module Modified_Merger_Tree and Time_Parameters)
- !G0=0.57
- !gamma_1=0.38
- !gamma_2=-0.01
- !eps1=0.1        
- !eps2=0.1        
 
 !
 ! Cosmological and Power Spectrum parameters
