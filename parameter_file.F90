@@ -40,7 +40,7 @@ subroutine parse_parameter_file()
       stop
     end if
 
-    open (action='read', file=FILE_NAME, iostat=rc, newunit=fu)
+    open(action='read', file=FILE_NAME, iostat=rc, newunit=fu)
 
     if (rc /= 0) then
       write (stderr, '("Error: Reading TOML file ", a, " failed")') FILE_NAME
@@ -48,10 +48,10 @@ subroutine parse_parameter_file()
     end if
 
     call toml_parse(table, fu)
-    close (fu)
+    close(fu)
 
     if (.not. allocated(table)) then
-      write (stderr, '("Error: Parsing failed")')
+      write (stderr, '("Error: Parsing failed (allocating table)")')
       stop
     end if
 
@@ -65,7 +65,7 @@ subroutine parse_parameter_file()
     end if
 
     ! Get [tree] section.
-    call get_value(table, 'treee', child, requested=.false.)
+    call get_value(table, 'tree', child, requested=.false.)
 
     if (associated(child)) then
       ! Parameters used to modify the merger rate used in split.F90
