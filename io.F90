@@ -8,7 +8,7 @@ module IO
   !    module procedure write_1d_array_real, write_1d_array_int
   !  end interface write_1d_array
 
-  character(*), parameter :: DSET_TREE_INDEX_RAW = "/TreeHalos/TreeIndexRaw"
+  character(*), parameter :: DSET_TREE_INDEX_PCH = "/TreeHalos/TreeIndexPCH"
   character(*), parameter :: DSET_TREE_INDEX = "/TreeHalos/TreeIndex"
   character(*), parameter :: DSET_TREE_BRANCH = "/TreeHalos/TreeBranch"
   character(*), parameter :: DSET_TREE_FIRST_PROGENITOR = "/TreeHalos/TreeFirstProgenitor"
@@ -51,7 +51,7 @@ contains
     dataset_type = H5T_NATIVE_INTEGER
 
     ! The index in the array order assigned by PCHTrees
-    call create_extensible_dataset(filename, DSET_TREE_INDEX_RAW, dataset_type, &
+    call create_extensible_dataset(filename, DSET_TREE_INDEX_PCH, dataset_type, &
       & N_min, N_max, hdferr)
 
     ! A simple 0..N index (will differ from TreeIndexRaw if nodes are written
@@ -123,9 +123,9 @@ contains
     type (TreeNode), pointer :: This_Node, Child_Node    
  
     ! Output arrays (generic)
-    integer, allocatable :: raw_to_df_index(:)
+    integer, allocatable :: pch_to_df_index(:)
     integer, allocatable :: tree_index(:)
-    integer, allocatable :: tree_index_raw(:)
+    integer, allocatable :: tree_index_pch(:)
     integer, allocatable :: tree_branch(:)
     integer, allocatable :: tree_first_progenitor(:)
     integer, allocatable :: tree_next_progenitor(:)
@@ -153,13 +153,13 @@ contains
     deallocate(tree_index)
    
     ! Create map of original index to depth first index
-    allocate(raw_to_df_index(nnodes))
+    allocate(pch_to_df_index(nnodes))
     inode = 1
     write(*,*) "Raw to DF index map"
     
     This_Node => Tree_Root
     do while (associated(This_Node))
-      raw_to_df_index(This_Node%index) = inode
+      pch_to_df_index(This_Node%index) = inode
       if (inode.le.10) then
         write(*,*) inode, This_Node%index
       endif
@@ -168,7 +168,7 @@ contains
     end do
 
     ! Scratchspace to write integer properties
-    allocate(tree_index_raw(nnodes), source=-1)
+    allocate(tree_index_pch(nnodes), source=-1)
     allocate(tree_branch(nnodes), source=-1)
     allocate(tree_first_progenitor(nnodes), source=-1)
     allocate(tree_next_progenitor(nnodes), source=-1)
@@ -177,9 +177,25 @@ contains
     allocate(tree_snapnum(nnodes), source=-1)
     allocate(tree_mass(nnodes), source=-1.0)
     
+    ! Notes on indexing
+    !
+    ! Node%index is set when the tree is built, and not used afterwards even
+    ! though the nodes are re-ordered in the array at the end of the build step. 
+    !
+    ! We could probably abuse %index to hold the index in the order we actually
+    ! write, but no obvious need to do this.
+    !
     ! Since the tree is output in DF order, there is no need to store pointer
     ! indices for DF order.
-
+    !
+    ! TODO: might want to suppport different orderings in future.
+    ! Could make the mapping index array more generic.
+    ! - PCH: logical grouping by siblings
+    ! - Branch order
+    ! - Depth first
+    ! - Same order as Gadget  
+    ! - etc.
+  
     ! Second output treewalk
     ! Write nodes in depth-first order (but zero-based)
     This_Node => Tree_Root
@@ -187,7 +203,7 @@ contains
     ibranch = 1
     
     do while (associated(This_Node))
-      tree_index_raw(inode) = This_Node%index - 1 ! 0-based
+      tree_index_pch(inode) = This_Node%index - 1 ! 0-based
       
       ! Record branch
       tree_branch(inode) = ibranch - 1 ! 0-based
@@ -201,19 +217,19 @@ contains
       if (associated(This_Node%child)) then
         Child_Node => This_Node%child
         
-        tree_first_progenitor(inode) = raw_to_df_index(Child_Node%index) - 1 ! 0-based 
-        tree_first_descendant(inode) = raw_to_df_index(This_Node%index) - 1 ! 0-based 
+        tree_first_progenitor(inode) = pch_to_df_index(Child_Node%index) - 1 ! 0-based 
+        tree_first_descendant(inode) = pch_to_df_index(This_Node%index) - 1 ! 0-based 
       
         ! Create next progenitor links for non-leaf nodes
         do while (associated(Child_Node%sibling)) 
-          inode_child = raw_to_df_index(Child_Node%index)
+          inode_child = pch_to_df_index(Child_Node%index)
           if (inode_child.gt.nnodes) then
             write(*,*) Child_Node%index, inode_child, nnodes
             write(*,*) "FAIL"
             stop
           endif
           ! The next progenitor is the sibling of the current child
-          tree_next_progenitor(inode_child) = raw_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
+          tree_next_progenitor(inode_child) = pch_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
           ! All children descend to the same progenitor
           tree_descendant(inode_child) = inode - 1 !  0-based
 
@@ -228,8 +244,8 @@ contains
     end do
 
     ! The PCHTrees index
-    call append_to_dataset(filename, DSET_TREE_INDEX_RAW, tree_index_raw, hdferr)
-    deallocate(tree_index_raw)
+    call append_to_dataset(filename, DSET_TREE_INDEX_PCH, tree_index_pch, hdferr)
+    deallocate(tree_index_pch)
 
     ! The branch index
     call append_to_dataset(filename, DSET_TREE_BRANCH, tree_branch, hdferr)
@@ -262,19 +278,17 @@ contains
     call append_to_dataset(filename, DSET_TREE_GROUP_M_CRIT200, tree_mass, hdferr)
     deallocate(tree_mass)
 
-    ! Notes
-    ! Node%index is set when the tree is built, and not used afterwards
-    ! even though the nodes are re-ordered in the array at the end of the
-    ! build step. We can probably abuse the %index here to hold the index
-    ! in the order we actually write.
-
-    ! We can guess the size for the number of trees we want and then shrink
-
-    ! We probably want to have the option to sample the mass function
+    ! TODO:
+    ! - Add file header
+    ! - Add tree index table
+    ! - We can guess the size for the number of trees we want and then shrink
+    ! - We probably want to have the option to sample the mass function
+    ! - Fix parameters
+    ! - Tidy up junk
 
     write(*,*) 'Wrote file'
     
-    deallocate(raw_to_df_index)
+    deallocate(pch_to_df_index)
 
   end subroutine write_tree_hdf5
 
@@ -449,6 +463,7 @@ contains
   
   end subroutine write_1d_array_integer
 
+  ! ############################################################  
   subroutine check_hdf5_err(hdferr, msg, info, fatal)
     implicit none
     ! Check and report HDF5 errors
