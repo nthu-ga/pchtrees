@@ -9,11 +9,14 @@ program tree
  use Tree_Routines ! tree_routines.F90
  use Modified_Merger_Tree ! modified_merger_tree.F90
  use Parameter_File
+ use HDF5
+ use IO
+
 
 implicit none
 
   type (TreeNode), pointer :: This_Node
-  integer :: i,j,count,ntree
+  integer :: i,j,ncount,ntree
   ! APC seems this is not used?
   ! integer, parameter :: long = selected_real_kind(9,99)
   real, allocatable  :: wlev(:),alev(:)
@@ -25,7 +28,17 @@ implicit none
   EXTERNAL deltcrit,sigmacdm,split
   real :: dc
 
+  ! Treewalk counter
+  integer :: inode
+
+  ! HDF5 output
+  character(len=256) filename
+  integer(hsize_t) :: N_min, N_max
+  integer :: hdferr
+  
   call parse_parameter_file()
+   
+  call h5open_f(hdferr)
 
 !Mass of halo for which the tree is to be grown. The mass resolution of
 !the tree and the number of trees to grow. 
@@ -68,72 +81,80 @@ implicit none
   iseed0=-8635 !random number seed
   iseed=iseed0
 
-! Set up the array of redshifts at which the tree is to be stored
+  ! Set up the array of redshifts at which the tree is to be stored
   write(0,*) 'The redshifts at which the tree will be stored:'
   allocate(wlev(nlev),alev(nlev),ifraglev(nlev))
-! Specify output/storage times of the merger tree
+  ! Specify output/storage times of the merger tree
   ahalo=1.0       !expansion factor at base of tree
   zmax=4.0        !maximum redshift of stored tree
   do ilev=1,nlev  !tree levels uniform between z=0 and zmax
-     alev(ilev)=1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
-     dc = deltcrit(alev(ilev))
-     write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0,'at which deltcrit=',dc
+    alev(ilev)=1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
+    dc = deltcrit(alev(ilev))
+    write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0,'at which deltcrit=',dc
   end do
 
+  ! FIXME estimate these numbers better
+  N_min = 100
+  N_max = 1000
+  filename = './test.hdf5'
+  call create_hdf5_output(filename, N_min, N_max) 
 
-!Start generating trees
-do i=1,ntree
+  ! Start generating trees
+  generate_trees: do i=1,ntree
+    iter = 1   
 
- iter=1   !if we run out of allocated memory, which is flagged
-     !by ierr=1 or ierr=2 then we do another iteration 
-     !with more allocated memory
-    do while (ierr.ne.0 .or. iter.eq.1) 
-     if (iter.eq.1) iseed0=iseed0-19  !advance seed for new tree
-     iseed=iseed0
-     !if needed increase the amount of memory allocated
-        call Memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
-        do j = 1, nhalomax, 1
-           MergerTree_Aux(j)%index = j
-        end do
-        MergerTree => MergerTree_Aux  !Maps MergerTree to allocated 
+    ! If we run out of allocated memory, which is flagged
+    ! by ierr=1 or ierr=2, then we do another iteration 
+    ! with more allocated memory.
 
-     call make_tree(mphalo,ahalo,mres,alev,nlev,iseed,split,sigmacdm,deltcrit,&
-             & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
-     iter=iter+1
-     end do
+    build_tree: do while ((ierr.ne.0).or.(iter.eq.1))
+      if (iter.eq.1) iseed0 = iseed0 - 19 ! Advance seed for new tree
+      iseed = iseed0
 
-     write(0,*)'made a tree',i
-write(0,*) 'Omega_0=',omega0,'Lambda_0=',lambda0
-write(0,*) 'sigma_8=',sigma8,'Gamma=',Gamma
+      ! Allocate memory
+      ! If needed, increase the amount of memory allocated
+      call Memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
+      do j=1, nhalomax, 1
+        MergerTree_Aux(j)%index = j
+      end do
+      MergerTree => MergerTree_Aux  !Maps MergerTree to allocated 
 
-     write(0,*)'Counting the number of nodes in the tree.'
-!
-!    You might want to insert your own code here and pass it the
-!    tree.
+      ! Build the tree
+      call make_tree(mphalo,ahalo,mres,alev,nlev,iseed,split,sigmacdm,deltcrit,&
+        & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
 
-     This_Node => MergerTree(1)
-     count = 0
-     do while (associated(This_Node))
-        count = count + 1
-        This_Node => Walk_Tree(This_Node)
-     end do
-     write(0,'(a,i3,a,i8)') 'number of nodes in tree',i,' is',count
+      iter=iter+1
+    end do build_tree
 
-!   Write out the information for the first couple of
-!   halos in the tree
-     write(0,*) 'Example information from the tree:'
-     This_Node => MergerTree(1)
-     write(0,*) 'Base node:'
-     write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
-     This_Node => This_node%child !move to first progenitor
-     write(0,*) 'First progenitor:'
-     write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
-     This_Node => This_node%sibling !move to 2nd progenitor
-     write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    write(0,*) 'made a tree',i
+    write(0,*) 'Omega_0=',omega0,'Lambda_0=',lambda0
+    write(0,*) 'sigma_8=',sigma8,'Gamma=',Gamma
 
+    write(0,*)'Counting the number of nodes in the tree.'
 
-end do
+    !    You might want to insert your own code here and pass it the
+    !    tree.
 
-deallocate(wlev,alev,ifraglev)
+    This_Node => MergerTree(1)
+    call write_tree_hdf5(filename, This_Node, nhalo, nlev)
+    
+    !   Write out the information for the first couple of
+    !   halos in the tree
+    write(0,*) 'Example information from the tree:'
+    This_Node => MergerTree(1)
+    write(0,*) 'Base node:'
+    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
+    This_Node => This_node%child !move to first progenitor
+    write(0,*) 'First progenitor:'
+    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    This_Node => This_node%sibling !move to 2nd progenitor
+    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+
+  end do generate_trees
+
+  deallocate(wlev,alev,ifraglev)
+
+  ! Tidy up HDF5
+  call h5close_f(hdferr)
 
 end program tree
