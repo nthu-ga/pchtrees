@@ -16,7 +16,8 @@ program tree
 implicit none
 
   type (TreeNode), pointer :: This_Node
-  integer :: i,j,ncount,ntree
+  integer :: i,j,ncount
+  integer :: itree, ntree
   ! APC seems this is not used?
   ! integer, parameter :: long = selected_real_kind(9,99)
   real, allocatable  :: wlev(:),alev(:)
@@ -30,6 +31,9 @@ implicit none
 
   ! Treewalk counter
   integer :: inode
+
+  ! Trees table
+  integer, allocatable :: trees_nhalos(:)
 
   ! HDF5 output
   character(len=256) filename
@@ -93,14 +97,21 @@ implicit none
     write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0,'at which deltcrit=',dc
   end do
 
+  write(*,*) "Parameters"
+  write(0,*) 'Omega_0=',omega0,'Lambda_0=',lambda0
+  write(0,*) 'sigma_8=',sigma8,'Gamma=',Gamma
+
+
   ! FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
   filename = './test.hdf5'
   call create_hdf5_output(filename, N_min, N_max) 
 
+  allocate(trees_nhalos(ntree))
+
   ! Start generating trees
-  generate_trees: do i=1,ntree
+  generate_trees: do itree=1,ntree
     iter = 1   
 
     ! If we run out of allocated memory, which is flagged
@@ -126,32 +137,48 @@ implicit none
       iter=iter+1
     end do build_tree
 
-    write(0,*) 'made a tree',i
-    write(0,*) 'Omega_0=',omega0,'Lambda_0=',lambda0
-    write(0,*) 'sigma_8=',sigma8,'Gamma=',Gamma
-
-    write(0,*)'Counting the number of nodes in the tree.'
-
     !    You might want to insert your own code here and pass it the
     !    tree.
 
+    ! Write the tree to output
+    ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
-    call write_tree_hdf5(filename, This_Node, nhalo, nlev)
+    call write_tree_hdf5(filename, itree-1, This_Node, nhalo, nlev)
+    
+    write(0,*) 'Made tree',itree, nhalo, This_Node%mhalo
+    
+    ! Record number of halos for trees table
+    trees_nhalos(itree) = nhalo
     
     !   Write out the information for the first couple of
     !   halos in the tree
-    write(0,*) 'Example information from the tree:'
-    This_Node => MergerTree(1)
-    write(0,*) 'Base node:'
-    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
-    This_Node => This_node%child !move to first progenitor
-    write(0,*) 'First progenitor:'
-    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
-    This_Node => This_node%sibling !move to 2nd progenitor
-    write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    !write(0,*) 'Example information from the tree:'
+    !This_Node => MergerTree(1)
+    !write(0,*) 'Base node:'
+    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
+    !This_Node => This_node%child !move to first progenitor
+    !write(0,*) 'First progenitor:'
+    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    !This_Node => This_node%sibling !move to 2nd progenitor
+    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
 
   end do generate_trees
 
+  ! Write the trees table
+  call write_tree_table(filename, trees_nhalos)
+
+  ! Write the redshift list
+  ! TODO FIXME
+
+  ! Write the header
+  ! Currently only support single file output
+  call write_header(filename, '/Header', nlev-1, & 
+    & sum(trees_nhalos), sum(trees_nhalos), ntree, ntree, 1)
+ 
+  ! Write parameters
+  ! TODO FIXME
+
+  deallocate(trees_nhalos)
   deallocate(wlev,alev,ifraglev)
 
   ! Tidy up HDF5

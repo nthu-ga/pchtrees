@@ -11,6 +11,7 @@ module IO
   character(*), parameter :: DSET_TREE_INDEX_PCH = "/TreeHalos/TreeIndexPCH"
   character(*), parameter :: DSET_TREE_INDEX = "/TreeHalos/TreeIndex"
   character(*), parameter :: DSET_TREE_BRANCH = "/TreeHalos/TreeBranch"
+  character(*), parameter :: DSET_TREE_ID = "/TreeHalos/TreeID"
   character(*), parameter :: DSET_TREE_FIRST_PROGENITOR = "/TreeHalos/TreeFirstProgenitor"
   character(*), parameter :: DSET_TREE_MAIN_PROGENITOR = "/TreeHalos/TreeMainProgenitor"
   character(*), parameter :: DSET_TREE_NEXT_PROGENITOR = "/TreeHalos/TreeNextProgenitor"
@@ -22,6 +23,7 @@ module IO
 
 contains
   
+  ! ############################################################ 
   subroutine create_hdf5_output(filename, N_min, N_max)
     !
     ! Set up the output file
@@ -62,6 +64,10 @@ contains
     ! A 0..N label for each branch of the tree (0: main branch)
     call create_extensible_dataset(filename, DSET_TREE_BRANCH, dataset_type, &
       & N_min, N_max, hdferr)
+ 
+    ! A 0..N label for each tree
+    call create_extensible_dataset(filename, DSET_TREE_ID, dataset_type, &
+      & N_min, N_max, hdferr)
 
     ! A 0..N label for each branch of the tree (0: main branch)
     call create_extensible_dataset(filename, DSET_TREE_FIRST_PROGENITOR, dataset_type, &
@@ -88,42 +94,139 @@ contains
       & N_min, N_max, hdferr)
  
     ! Create float arrays
+    dataset_type = H5T_NATIVE_REAL
 
     ! FIXME
-    dataset_type = H5T_NATIVE_REAL
     call create_extensible_dataset(filename, DSET_TREE_GROUP_M_CRIT200, dataset_type, &
       & N_min, N_max, hdferr)
  
     ! FIXME
-    dataset_type = H5T_NATIVE_REAL
     call create_extensible_dataset(filename, DSET_TREE_SUBHALO_MASS, dataset_type, &
       & N_min, N_max, hdferr)
- 
   
   end subroutine create_hdf5_output
+  
+  ! ############################################################
+  subroutine write_tree_table(filename, tree_lengths)
+    implicit none
+    
+    character(len=*), intent(in) :: filename
+    integer, dimension(:), intent(in) :: tree_lengths
+
+    integer, allocatable :: tree_property(:)
+    integer :: i
+
+    call write_1d_array_integer(filename, '/TreeTable/Length', tree_lengths, &
+      & overwrite=.false.)
+
+    allocate(tree_property(size(tree_lengths)))
+
+    ! Create offsets
+    tree_property(1) = 0
+    do i=2,size(tree_lengths)
+      tree_property(i) = tree_lengths(i-1)
+    end do
+    call write_1d_array_integer(filename, '/TreeTable/StartOffset', tree_property, &
+      & overwrite=.false.)
+
+    ! Create tree ids
+    do i=1,size(tree_lengths)
+      tree_property(i) = i - 1 ! O-based 
+    end do
+    call write_1d_array_integer(filename, '/TreeTable/TreeID', tree_property, &
+      & overwrite=.false.)
+
+    deallocate(tree_property)
+
+  end subroutine write_tree_table
+
+  ! ############################################################ 
+  subroutine write_header(filename, group_name, &
+      & last_snapshot, nhalos_thisfile, nhalos_total, & 
+      & ntrees_thisfile, ntrees_total, nfiles)
+    implicit none
+
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
+    character(len=*), intent(in)  :: group_name    ! Name of the group
+
+    integer, intent(in) :: last_snapshot, nfiles
+    integer, intent(in) :: nhalos_total, nhalos_thisfile
+    integer, intent(in) :: ntrees_total, ntrees_thisfile
+
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    ! Open file
+    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferr)
+
+    ! Create or open group
+    call h5gcreate_f(file_id, group_name, group_id, hdferr)
+    call h5gopen_f(file_id, group_name, group_id, hdferr)
+
+    ! Write attributes
+    call write_group_attr_integer(group_id, 'LastSnapShotNr', last_snapshot)
+    call write_group_attr_integer(group_id, 'Nhalos_ThisFile', nhalos_thisfile)
+    call write_group_attr_integer(group_id, 'Nhalos_Total', nhalos_total)
+    call write_group_attr_integer(group_id, 'Ntrees_ThisFile', ntrees_thisfile)
+    call write_group_attr_integer(group_id, 'Ntrees_Total', ntrees_total)
+    call write_group_attr_integer(group_id, 'NumFiles', nfiles)
+
+    ! Close resources
+    call h5gclose_f(group_id, hdferr)
+    call h5fclose_f(file_id, hdferr)
+
+  end subroutine write_header
 
   ! ############################################################
-  subroutine write_tree_hdf5(filename, Tree_Root, nnodes, nlevels)
+  subroutine write_group_attr_integer(group_id, attr_name, attr_value)
+    implicit none
+    integer(hid_t), intent(in) :: group_id
+    character(*), intent(in) :: attr_name
+    class(*), intent(in) :: attr_value
+
+    integer(hid_t) :: attr_id, space_id
+    integer(hsize_t) :: attr_dims(1)
+    integer :: hdferr
+
+    ! Create dataspace for scalar attributes
+    attr_dims = (/ 1 /)
+    call h5screate_simple_f(1, attr_dims, space_id, hdferr)
+
+    select type(attr_value)
+    type is (integer)
+      call h5acreate_f(group_id, attr_name, H5T_NATIVE_INTEGER, space_id, attr_id, hdferr)
+      call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, attr_value, attr_dims, hdferr)
+    class default
+      write(*,*) "Unknown attribute type!" 
+      stop
+    end select
+
+    call h5aclose_f(attr_id, hdferr)
+    call h5sclose_f(space_id, hdferr)
+  end subroutine
+  ! ############################################################
+  subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
     implicit none
 
     ! FIXME may want to pass open fileid
 
     character(len=*), intent(IN) :: filename
     type (TreeNode), pointer, intent(IN) :: Tree_Root
-    integer, intent(IN) :: nnodes, nlevels
+    integer, intent(IN) :: tree_id, nnodes, nlevels
 
     ! HDF5 file
     integer :: hdferr
-    
+
     ! Counters
     integer :: i
     integer :: inode, inode_child, ibranch
 
     ! Treewalk oointers
     type (TreeNode), pointer :: This_Node, Child_Node    
- 
+
     ! Output arrays (generic)
     integer, allocatable :: pch_to_df_index(:)
+    integer, allocatable :: tree_id_array(:)
     integer, allocatable :: tree_index(:)
     integer, allocatable :: tree_index_pch(:)
     integer, allocatable :: tree_branch(:)
@@ -144,30 +247,34 @@ contains
     !  This_Node => Walk_Tree(This_Node)
     !end do
 
-    write(0,'(a,i8,a)') 'Number of nodes in tree: ', nnodes
- 
+    ! Write TreeID
+    allocate(tree_id_array(nnodes))
+    tree_id_array(:) = tree_id
+    call append_to_dataset(filename, DSET_TREE_ID, tree_id_array, hdferr)
+    deallocate(tree_id_array)
+
     ! Write TreeIndex (simple 0..N-1)
     allocate(tree_index(nnodes))
     tree_index(:) = (/ (i, i = 0, nnodes - 19) /)
     call append_to_dataset(filename, DSET_TREE_INDEX, tree_index, hdferr)
     deallocate(tree_index)
-   
+
     ! Create map of original index to depth first index
     allocate(pch_to_df_index(nnodes))
     inode = 1
-    write(*,*) "Raw to DF index map"
-    
+    ! write(*,*) "PCH to DF index map"
+
     This_Node => Tree_Root
     do while (associated(This_Node))
       pch_to_df_index(This_Node%index) = inode
-      if (inode.le.10) then
-        write(*,*) inode, This_Node%index
-      endif
+      ! if (inode.le.10) then
+      !   write(*,*) inode, This_Node%index
+      ! endif
       inode = inode + 1 
       This_Node => Walk_Tree(This_Node)
     end do
 
-    ! Scratchspace to write integer properties
+    ! Scratchspace to write properties
     allocate(tree_index_pch(nnodes), source=-1)
     allocate(tree_branch(nnodes), source=-1)
     allocate(tree_first_progenitor(nnodes), source=-1)
@@ -421,35 +528,36 @@ contains
     integer :: hdferr
     logical :: file_exists, dataset_exists
     
-    inquire(file=trim(filename), exist=file_exists)
-    if (file_exists) then
-      call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdferr)
-    else
-      call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
-    end if
-    call check_hdf5_err(hdferr,"Error opening/creating file",trim(filename))
+    !inquire(file=trim(filename), exist=file_exists)
+    !if (file_exists) then
+    !  call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdferr)
+    !else
+    !  call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
+    !end if
+    
+    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdferr)
+    call check_hdf5_err(hdferr,"Error opening file",trim(filename))
     
     dims(1) = size(data)
     call h5screate_simple_f(1, dims, dspace_id, hdferr)
     call check_hdf5_err(hdferr,"Error creating dataspace")
     
-    call h5lexists_f(file_id, trim(dataset_path), dataset_exists, hdferr)
-    if (dataset_exists .and. present(overwrite)) then
-      if (.not. overwrite) then
-        write (*,*) "Dataset already exists and overwrite is false. Aborting."
-        call check_hdf5_err(-1,"Error overwriting dataset")
-      else
-        call h5ldelete_f(file_id, trim(dataset_path), hdferr)
-        call check_hdf5_err(hdferr,"Error deleting dataset")
-      end if
-    end if
+    !call h5lexists_f(file_id, trim(dataset_path), dataset_exists, hdferr)
+    !if (dataset_exists .and. present(overwrite)) then
+    !  if (.not. overwrite) then
+    !    write (*,*) "Dataset already exists and overwrite is false. Aborting."
+    !    call check_hdf5_err(-1,"Error overwriting dataset")
+    !  else
+    !    call h5ldelete_f(file_id, trim(dataset_path), hdferr)
+    !    call check_hdf5_err(hdferr,"Error deleting dataset")
+    !  end if
+    !end if
 
     ! Create link creation property list
     call h5pcreate_f(H5P_LINK_CREATE_F, plist_id, hdferr)
     ! Enable create_intermediate_group property
     call h5pset_create_inter_group_f(plist_id, 1, hdferr)
 
-    write(*,*) 'About to write dataset'
     call h5dcreate_f(file_id, trim(dataset_path), H5T_NATIVE_INTEGER, dspace_id, dset_id, hdferr, &
       & H5P_DEFAULT_F, plist_id, H5P_DEFAULT_F)
     call check_hdf5_err(hdferr,"Error creating dataset")
