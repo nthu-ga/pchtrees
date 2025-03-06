@@ -177,15 +177,15 @@ subroutine spline_interp(ms,sigma,alpha)
         write(splinefile,'(a,a)') trim(pkinfile),'.spline'
      case (3) ! Eisenstein & Hu
         write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2,a1,f6.4)') &
-             & TRIM(runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_' &
+             & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_' &
              &,trim(sform),'_',kref ,'.spline.',itrans,'_',omega0,'_',omegab
      case (10) ! WDM
         write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2)') &
-             & TRIM(runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform) &
+             & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform) &
              &,'_',kref,'.spline.',itrans,'_',mwdm
      case default ! CDM
         write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1)') & 
-             &  TRIM(runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
+             &  TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
              &,'.spline.',itrans
      end select
      io=0
@@ -302,7 +302,7 @@ subroutine make_spline
   !
   ! First lock the power_spectrum files
   !
-  open (10,file=TRIM(runtime%data_path)//'/Power_Spec/lock',form='formatted',status='unknown')
+  open (10,file=TRIM(pa_runtime%data_path)//'/Power_Spec/lock',form='formatted',status='unknown')
   write (10,*) 'locked'
   close (10)
   !
@@ -397,7 +397,7 @@ subroutine make_spline
   !
   ! Unlock the power spectra files
   !    
-  command='rm -f '//TRIM(runtime%data_path)//'/Power_Spec/lock'
+  command='rm -f '//TRIM(pa_runtime%data_path)//'/Power_Spec/lock'
 !  irem=system_call(command)
 !#ifdef WARN
 !  if (irem.ne.0) write (0,*) 'make_spline(): WARNING - failed to remove lock file'

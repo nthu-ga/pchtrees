@@ -1,19 +1,17 @@
 program tree
-
- use Defined_Types ! defined_types.F90
- use Cosmological_Parameters ! cosmological_parameters.F90
- use Power_Spectrum_Parameters ! parameters.F90
- use Tree_Memory_Arrays ! memory_modules.F90
- use Tree_Memory_Arrays_Passable ! memory_modules.F90
- use Time_Parameters ! parameters.F90
- use Tree_Routines ! tree_routines.F90
- use Modified_Merger_Tree ! modified_merger_tree.F90
- use Parameter_File
- use HDF5
- use IO
-
-
-implicit none
+  use Defined_Types ! defined_types.F90
+  use Cosmological_Parameters ! cosmological_parameters.F90
+  use Power_Spectrum_Parameters ! parameters.F90
+  use Tree_Memory_Arrays ! memory_modules.F90
+  use Tree_Memory_Arrays_Passable ! memory_modules.F90
+  use Time_Parameters ! parameters.F90
+  use Tree_Routines ! tree_routines.F90
+  use Modified_Merger_Tree ! modified_merger_tree.F90
+  use Parameter_File
+  use HDF5
+  use IO
+  use Commandline
+  implicit none
 
   type (TreeNode), pointer :: This_Node
   integer :: i,j,ncount
@@ -22,9 +20,9 @@ implicit none
   ! integer, parameter :: long = selected_real_kind(9,99)
   real, allocatable  :: wlev(:),alev(:)
   integer, allocatable  :: ifraglev(:)
-  real :: mphalo,mres,ahalo,deltcrit,sigmacdm,zmax
-  integer, parameter:: nlev=10 !number of levels of the tree to store
-  integer :: ierr,nhalomax,nhalo,nhalolev(nlev),jphalo(nlev),ilev
+  real :: mphalo,ahalo,deltcrit,sigmacdm,zmax
+  integer :: ierr,nhalomax,nhalo,ilev
+  integer, allocatable :: nhalolev(:),jphalo(:)
   integer :: iter,iseed0,iseed
   EXTERNAL deltcrit,sigmacdm,split
   real :: dc
@@ -36,21 +34,20 @@ implicit none
   integer, allocatable :: trees_nhalos(:)
 
   ! HDF5 output
-  character(len=256) filename
   integer(hsize_t) :: N_min, N_max
   integer :: hdferr
-  
-  call parse_parameter_file()
-   
+
+  ! Setup
+  call read_command_line_args()
+  call parse_parameter_file(trim(arg_pf_path))
   call h5open_f(hdferr)
+  
+  ! Mass of halo for which the tree is to be grown. The mass resolution of the
+  ! tree and the number of trees to grow. 
+  
+  mphalo=1.0e+14  !halo mass at base of tree
+  ntree=2         !number of trees
 
-!Mass of halo for which the tree is to be grown. The mass resolution of
-!the tree and the number of trees to grow. 
- mphalo=1.0e+14  !halo mass at base of tree
- mres = 1.0e+08  !mass resolution
- ntree=2         !number of trees
-
-!
 ! Cosmological and Power Spectrum parameters
 ! (passed in module  Cosmological_Parameters and Power_Spectrum_Parameters)
 
@@ -87,12 +84,15 @@ implicit none
 
   ! Set up the array of redshifts at which the tree is to be stored
   write(0,*) 'The redshifts at which the tree will be stored:'
-  allocate(wlev(nlev),alev(nlev),ifraglev(nlev))
+  allocate(wlev(pa_output%nlev))
+  allocate(alev(pa_output%nlev))
+  allocate(ifraglev(pa_output%nlev))
+
   ! Specify output/storage times of the merger tree
   ahalo=1.0       !expansion factor at base of tree
   zmax=4.0        !maximum redshift of stored tree
-  do ilev=1,nlev  !tree levels uniform between z=0 and zmax
-    alev(ilev)=1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
+  do ilev=1,pa_output%nlev  !tree levels uniform between z=0 and zmax
+    alev(ilev)=1.0/(1.0+zmax*real(ilev-1)/real(pa_output%nlev-1))
     dc = deltcrit(alev(ilev))
     write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0,'at which deltcrit=',dc
   end do
@@ -105,10 +105,13 @@ implicit none
   ! FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
-  filename = './test.hdf5'
-  call create_hdf5_output(filename, N_min, N_max) 
+  call create_hdf5_output(pa_output%file_path, N_min, N_max) 
 
   allocate(trees_nhalos(ntree))
+
+  ! Allocate tree workspace
+  allocate(nhalolev(pa_output%nlev))
+  allocate(jphalo(pa_output%nlev))
 
   ! Start generating trees
   generate_trees: do itree=1,ntree
@@ -124,14 +127,16 @@ implicit none
 
       ! Allocate memory
       ! If needed, increase the amount of memory allocated
-      call Memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
+      call Memory(nhalo,nhalomax,ierr,pa_output%nlev,mphalo,&
+        & pa_output%mres)
       do j=1, nhalomax, 1
         MergerTree_Aux(j)%index = j
       end do
       MergerTree => MergerTree_Aux  !Maps MergerTree to allocated 
 
       ! Build the tree
-      call make_tree(mphalo,ahalo,mres,alev,nlev,iseed,split,sigmacdm,deltcrit,&
+      call make_tree(mphalo,ahalo,pa_output%mres,alev,pa_output%nlev,&
+        & iseed,split,sigmacdm,deltcrit, &
         & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
 
       iter=iter+1
@@ -143,7 +148,8 @@ implicit none
     ! Write the tree to output
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
-    call write_tree_hdf5(filename, itree-1, This_Node, nhalo, nlev)
+    call write_tree_hdf5(pa_output%file_path, itree-1, This_Node, &
+      & nhalo, pa_output%nlev)
     
     write(0,*) 'Made tree',itree, nhalo, This_Node%mhalo
     
@@ -165,14 +171,14 @@ implicit none
   end do generate_trees
 
   ! Write the trees table
-  call write_tree_table(filename, trees_nhalos)
+  call write_tree_table(pa_output%file_path, trees_nhalos)
 
   ! Write the redshift list
   ! TODO FIXME
 
   ! Write the header
   ! Currently only support single file output
-  call write_header(filename, '/Header', nlev-1, & 
+  call write_header(pa_output%file_path, '/Header', pa_output%nlev-1, & 
     & sum(trees_nhalos), sum(trees_nhalos), ntree, ntree, 1)
  
   ! Write parameters
@@ -180,6 +186,8 @@ implicit none
 
   deallocate(trees_nhalos)
   deallocate(wlev,alev,ifraglev)
+  deallocate(nhalolev)
+  deallocate(jphalo)
 
   ! Tidy up HDF5
   call h5close_f(hdferr)

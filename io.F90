@@ -44,8 +44,7 @@ contains
     if (file_exists) then
       write(*,*) 'Remove existing output file: ', filename
       stop
-    endif
-      
+    endif 
     call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
     call check_hdf5_err(hdferr,"Error creating file",trim(filename))
   
@@ -157,8 +156,8 @@ contains
     integer :: hdferr
 
     ! Open file
-    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferr)
-
+    call open_existing_file(filename, file_id, 'write_header')
+    
     ! Create or open group
     call h5gcreate_f(file_id, group_name, group_id, hdferr)
     call h5gopen_f(file_id, group_name, group_id, hdferr)
@@ -416,9 +415,8 @@ contains
     integer(hsize_t) :: dims(1), maxdims(1), chunk_dims(1), N_avg
 
     ! Open file for reading
-    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferr)
-    call check_hdf5_err(hdferr,"Error opening file",info=trim(filename))
-    
+    call open_existing_file(filename, file_id, 'create_extensible_dataset')
+        
     ! Compute geometric mean for chunk size
     ! This casts double to int
     N_avg = INT(sqrt(real(N_min * N_max, kind=8)))
@@ -473,8 +471,10 @@ contains
     integer(hid_t) :: file_id, dset_id, dspace_id, memspace_id
     integer(hsize_t) :: dims(1), new_dims(1), start(1), ncount(1)
 
-    ! Open file and dataset
-    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferr)
+    ! Open file for reading
+    call open_existing_file(filename, file_id, 'append_to_dataset')
+        
+    ! Open dataset
     call h5dopen_f(file_id, dataset_name, dset_id, hdferr)
 
     ! Get current dataset size
@@ -534,10 +534,10 @@ contains
     !else
     !  call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
     !end if
-    
-    call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdferr)
-    call check_hdf5_err(hdferr,"Error opening file",trim(filename))
-    
+   
+    ! Open file for reading
+    call open_existing_file(filename, file_id, 'write_1d_array')
+
     dims(1) = size(data)
     call h5screate_simple_f(1, dims, dspace_id, hdferr)
     call check_hdf5_err(hdferr,"Error creating dataspace")
@@ -570,6 +570,29 @@ contains
     call h5fclose_f(file_id, hdferr)
   
   end subroutine write_1d_array_integer
+
+  ! ############################################################  
+  subroutine open_existing_file(filename, file_id, caller_name)
+    implicit none
+    character(len=*), intent(in) :: filename
+    character(len=*), intent(in), optional :: caller_name
+    integer(hid_t) :: file_id
+    integer :: hdferr
+    logical :: file_exists
+
+    inquire(file=trim(filename), exist=file_exists)
+    if (.not.file_exists) then
+      if (present(caller_name)) then
+        write(*,*) '[',caller_name,'] Output file does not exist:', filename
+      else
+        write(*,*) 'Output file does not exist:', filename
+      endif
+      stop
+    endif
+    call h5fopen_f(filename, H5F_ACC_RDWR_F, file_id, hdferr)
+    call check_hdf5_err(hdferr,"Error opening file",info=trim(filename))
+
+  end subroutine open_existing_file
 
   ! ############################################################  
   subroutine check_hdf5_err(hdferr, msg, info, fatal)

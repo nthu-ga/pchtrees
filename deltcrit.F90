@@ -75,7 +75,7 @@ real function deltcrit(a)
         if (abs(omega0+lambda0-1.0).gt.EPSOM) stop 'Error: Omega_0+Lambda_0.ne.1'
         !          
         ! Read Vince Eke's file that tabulates deltcrit0 against omega0.
-        open (10,file=TRIM(runtime%data_path)//'/flat.data',status='old')
+        open (10,file=TRIM(pa_runtime%data_path)//'/flat.data',status='old')
         read (10,*) ! Skip header.
         do i=1,NV
            read (10,*) omflat(i),density,delflat(i)

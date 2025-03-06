@@ -41,6 +41,7 @@ executable('pchtrees',
 		'deltcrit.F90',
 		'halo_mass_function.F90',
 		'io.F90',
+		'commandline.F90',
 		# dependencies : [tomlf_dep, hdf5, h5fortran_dep],
 		dependencies : [tomlf_dep, hdf5],
 		install : true)
