@@ -195,11 +195,11 @@ contains
     call h5gopen_f(file_id, '/Parameters', group_id, hdferr)
 
     ! Write attributes
-    call write_group_attr_real(group_id, 'tree_G0', pa_tree%G0)
-    call write_group_attr_real(group_id, 'tree_gamma_1', pa_tree%gamma_1)
-    call write_group_attr_real(group_id, 'tree_gamma_2', pa_tree%gamma_2)
-    call write_group_attr_real(group_id, 'tree_eps_1', pa_tree%eps1)
-    call write_group_attr_real(group_id, 'tree_eps_2', pa_tree%eps2)
+    call write_group_attr(group_id, 'tree_G0', pa_tree%G0)
+    call write_group_attr(group_id, 'tree_gamma_1', pa_tree%gamma_1)
+    call write_group_attr(group_id, 'tree_gamma_2', pa_tree%gamma_2)
+    call write_group_attr(group_id, 'tree_eps_1', pa_tree%eps1)
+    call write_group_attr(group_id, 'tree_eps_2', pa_tree%eps2)
 
     ! Close resources
     call h5gclose_f(group_id, hdferr)
@@ -231,12 +231,12 @@ contains
     call h5gopen_f(file_id, group_name, group_id, hdferr)
 
     ! Write attributes
-    call write_group_attr_integer(group_id, 'LastSnapShotNr', last_snapshot)
-    call write_group_attr_integer(group_id, 'Nhalos_ThisFile', nhalos_thisfile)
-    call write_group_attr_integer(group_id, 'Nhalos_Total', nhalos_total)
-    call write_group_attr_integer(group_id, 'Ntrees_ThisFile', ntrees_thisfile)
-    call write_group_attr_integer(group_id, 'Ntrees_Total', ntrees_total)
-    call write_group_attr_integer(group_id, 'NumFiles', nfiles)
+    call write_group_attr(group_id, 'LastSnapShotNr', last_snapshot)
+    call write_group_attr(group_id, 'Nhalos_ThisFile', nhalos_thisfile)
+    call write_group_attr(group_id, 'Nhalos_Total', nhalos_total)
+    call write_group_attr(group_id, 'Ntrees_ThisFile', ntrees_thisfile)
+    call write_group_attr(group_id, 'Ntrees_Total', ntrees_total)
+    call write_group_attr(group_id, 'NumFiles', nfiles)
 
     ! Close resources
     call h5gclose_f(group_id, hdferr)
@@ -245,7 +245,7 @@ contains
   end subroutine write_header
 
   ! ############################################################
-  subroutine write_group_attr_integer(group_id, attr_name, attr_value)
+  subroutine write_group_attr(group_id, attr_name, attr_value)
     implicit none
     integer(hid_t), intent(in) :: group_id
     character(*), intent(in) :: attr_name
@@ -274,37 +274,8 @@ contains
 
     call h5aclose_f(attr_id, hdferr)
     call h5sclose_f(space_id, hdferr)
-  end subroutine
+  end subroutine write_group_attr
 
-  ! ############################################################
-  subroutine write_group_attr_real(group_id, attr_name, attr_value)
-    implicit none
-    integer(hid_t), intent(in) :: group_id
-    character(*), intent(in) :: attr_name
-    class(*), intent(in) :: attr_value
-
-    integer(hid_t) :: attr_id, space_id
-    integer(hsize_t) :: attr_dims(1)
-    integer :: hdferr
-
-    ! Create dataspace for scalar attributes
-    attr_dims = (/ 1 /)
-    call h5screate_simple_f(1, attr_dims, space_id, hdferr)
-
-    select type(attr_value)
-    type is (real)
-      call h5acreate_f(group_id, attr_name, H5T_NATIVE_REAL, space_id, attr_id, hdferr)
-      call h5awrite_f(attr_id, H5T_NATIVE_REAL, attr_value, attr_dims, hdferr)
-    class default
-      write(*,*) "Unknown attribute type!" 
-      write(*,*) "Attribute:", trim(attr_name)
-      stop
-    end select
-
-    call h5aclose_f(attr_id, hdferr)
-    call h5sclose_f(space_id, hdferr)
-  end subroutine
- 
   ! ############################################################
   subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
     implicit none
