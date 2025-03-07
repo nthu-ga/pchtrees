@@ -25,17 +25,13 @@
 ! 
 ! split(m,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
 ! - subroutine does single binary split
-! dwmax (input) is max step in w=deltc(a), dw (output) is actual step
+! dwmax (input) is max step in w=deltcrit(a), dw (output) is actual step
 ! nprog(=0,1,2) is no. of progenitors, mprog(2) is array of their masses
 ! mprog(1) >= mprog(2)
 ! 
 ! sigma(m,dlsigdlm) 
 ! - function calculates linear sigma(m) and dln(sigma)/dln(m) at a=1
-! 
-! deltc(a)
-! - function calcs threshold linear overdensity for collapse at epoch a
-! 
-! 
+!
 ! OUTPUTS:
 ! --------
 ! N.B. calling program must check ierr on return!
@@ -104,7 +100,7 @@
 ! ELEMENTARY (BINARY) TREE (temporary):
 ! -------------------------------------
 ! inode = 1,inodemax:
-! wnode(inode) = value of w (=deltc(a)) at that node
+! wnode(inode) = value of w (=deltcrit(a)) at that node
 ! mlnode(inode),mrnode(inode) = masses of "left" and "right" fragments
 ! at each point where binary tree splits in 2
 ! (moving up the tree, the 2 fragments are considered to appear at the 
@@ -256,11 +252,12 @@ contains
   end subroutine Build_Sibling_Pointers
 end module Make_Tree_Module
 
-subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,deltc,nfragmax,ierr,nfragtot,nfraglev,jpfrag&
+subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragtot,nfraglev,jpfrag&
      &,wlev,ifraglev)
   !
   ! Uses
   use Defined_Types
+  use Overdensity
   use Make_Tree_Arrays
   use Make_Tree_Module
 #ifdef DEBUG
@@ -286,10 +283,10 @@ subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,deltc,nfragmax,ierr,
   parameter (MAXNODES=1e7) ! Absolute limit on number of nodes.
   !
   ! Functions
-  real sigma,deltc
+  real sigma 
   !
   ! Externals
-  external split,sigma,deltc
+  external split,sigma
   !
   ! Saves
   save inodemax
@@ -335,17 +332,18 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]
   end do
   !
 #ifdef DEBUG
-  write (0,*) 'make_tree(): DEBUG - creating array of values of w=deltc(a)'
+  write (0,*) 'make_tree(): DEBUG - creating array of values of w=deltcrit(a)'
 #endif
   !
-  ! Create array of values of w=deltc(a) at which output tree info. 
+  ! deltcrit function calcs threshold linear overdensity for collapse at epoch a
+  ! Create array of values of w=deltcrit(a) at which output tree info. 
   alev(1)=a0 ! Enforce this!
   do ilev=1,nlev
-     wlev(ilev)=deltc(alev(ilev))
+     wlev(ilev)=deltcrit(alev(ilev))
   enddo
   inode = 1
 #ifdef DEBUG
-  write (0,*) 'mke_tree(): DEBUG - done creating array of values of w=deltc(a)'
+  write (0,*) 'mke_tree(): DEBUG - done creating array of values of w=deltcrit(a)'
 #endif
   !
   ! Make binary tree.

@@ -2,11 +2,12 @@ module IO
   use hdf5
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
+  use Overdensity
   implicit none
 
-  !  interface write_1d_array
-  !    module procedure write_1d_array_real, write_1d_array_int
-  !  end interface write_1d_array
+  interface write_1d_array
+      module procedure write_1d_array_real, write_1d_array_integer
+  end interface write_1d_array
 
   character(*), parameter :: DSET_TREE_INDEX_PCH = "/TreeHalos/TreeIndexPCH"
   character(*), parameter :: DSET_TREE_INDEX = "/TreeHalos/TreeIndex"
@@ -106,6 +107,40 @@ contains
   end subroutine create_hdf5_output
   
   ! ############################################################
+  subroutine write_output_times(filename, alev)
+    implicit none
+    
+    character(len=*), intent(in) :: filename
+    real, dimension(:), intent(in) :: alev
+
+    real, allocatable :: output_time_property(:)
+    integer :: i
+
+    ! Write expansion factors at each output time
+    call write_1d_array_real(filename, '/OutputTimes/aexp', alev, &
+      & overwrite=.false.)
+
+    allocate(output_time_property(size(alev)))
+
+    ! Write critical density at each output time
+    do i=1,size(alev)
+      output_time_property = deltcrit(alev(i))
+    end do
+    call write_1d_array_real(filename, '/OutputTimes/deltacrit', output_time_property, &
+      & overwrite=.false.)
+
+    ! Write redshifts
+    do i=1,size(alev)
+      output_time_property = (1.0/alev(i))-1.0
+    end do
+    call write_1d_array_real(filename, '/OutputTimes/redshift', output_time_property, &
+      & overwrite=.false.)
+
+    deallocate(output_time_property)
+
+  end subroutine write_output_times
+
+  ! ############################################################
   subroutine write_tree_table(filename, tree_lengths)
     implicit none
     
@@ -203,6 +238,7 @@ contains
     call h5aclose_f(attr_id, hdferr)
     call h5sclose_f(space_id, hdferr)
   end subroutine
+
   ! ############################################################
   subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
     implicit none
@@ -261,14 +297,9 @@ contains
     ! Create map of original index to depth first index
     allocate(pch_to_df_index(nnodes))
     inode = 1
-    ! write(*,*) "PCH to DF index map"
-
     This_Node => Tree_Root
     do while (associated(This_Node))
       pch_to_df_index(This_Node%index) = inode
-      ! if (inode.le.10) then
-      !   write(*,*) inode, This_Node%index
-      ! endif
       inode = inode + 1 
       This_Node => Walk_Tree(This_Node)
     end do
@@ -384,9 +415,6 @@ contains
     call append_to_dataset(filename, DSET_TREE_GROUP_M_CRIT200, tree_mass, hdferr)
     deallocate(tree_mass)
 
-    ! TODO:
-    ! - Add file header
-    ! - Add tree index table
     ! - We can guess the size for the number of trees we want and then shrink
     ! - We probably want to have the option to sample the mass function
     ! - Fix parameters
@@ -528,13 +556,6 @@ contains
     integer :: hdferr
     logical :: file_exists, dataset_exists
     
-    !inquire(file=trim(filename), exist=file_exists)
-    !if (file_exists) then
-    !  call h5fopen_f(trim(filename), H5F_ACC_RDWR_F, file_id, hdferr)
-    !else
-    !  call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
-    !end if
-   
     ! Open file for reading
     call open_existing_file(filename, file_id, 'write_1d_array')
 
@@ -542,17 +563,6 @@ contains
     call h5screate_simple_f(1, dims, dspace_id, hdferr)
     call check_hdf5_err(hdferr,"Error creating dataspace")
     
-    !call h5lexists_f(file_id, trim(dataset_path), dataset_exists, hdferr)
-    !if (dataset_exists .and. present(overwrite)) then
-    !  if (.not. overwrite) then
-    !    write (*,*) "Dataset already exists and overwrite is false. Aborting."
-    !    call check_hdf5_err(-1,"Error overwriting dataset")
-    !  else
-    !    call h5ldelete_f(file_id, trim(dataset_path), hdferr)
-    !    call check_hdf5_err(hdferr,"Error deleting dataset")
-    !  end if
-    !end if
-
     ! Create link creation property list
     call h5pcreate_f(H5P_LINK_CREATE_F, plist_id, hdferr)
     ! Enable create_intermediate_group property
@@ -570,6 +580,44 @@ contains
     call h5fclose_f(file_id, hdferr)
   
   end subroutine write_1d_array_integer
+
+  ! ############################################################
+  subroutine write_1d_array_real(filename, dataset_path, data, overwrite)
+    implicit none
+    character(len=*), intent(in) :: filename       ! File name
+    character(len=*), intent(in) :: dataset_path   ! Full HDF5 dataset path
+    real, dimension(:), intent(in) :: data      ! 1D array data
+    logical, intent(in), optional :: overwrite     ! Whether to overwrite existing dataset
+   
+    integer(hid_t) :: file_id, dset_id, dspace_id, plist_id
+    integer(hsize_t), dimension(1) :: dims
+    integer :: hdferr
+    logical :: file_exists, dataset_exists
+    
+    ! Open file for reading
+    call open_existing_file(filename, file_id, 'write_1d_array')
+
+    dims(1) = size(data)
+    call h5screate_simple_f(1, dims, dspace_id, hdferr)
+    call check_hdf5_err(hdferr,"Error creating dataspace")
+    
+    ! Create link creation property list
+    call h5pcreate_f(H5P_LINK_CREATE_F, plist_id, hdferr)
+    ! Enable create_intermediate_group property
+    call h5pset_create_inter_group_f(plist_id, 1, hdferr)
+
+    call h5dcreate_f(file_id, trim(dataset_path), H5T_NATIVE_REAL, dspace_id, dset_id, hdferr, &
+      & H5P_DEFAULT_F, plist_id, H5P_DEFAULT_F)
+    call check_hdf5_err(hdferr,"Error creating dataset")
+    
+    call h5dwrite_f(dset_id, H5T_NATIVE_REAL, data, dims, hdferr)
+    call check_hdf5_err(hdferr,"Error writing dataset")
+    
+    call h5dclose_f(dset_id, hdferr)
+    call h5sclose_f(dspace_id, hdferr)
+    call h5fclose_f(file_id, hdferr)
+  
+  end subroutine write_1d_array_real
 
   ! ############################################################  
   subroutine open_existing_file(filename, file_id, caller_name)

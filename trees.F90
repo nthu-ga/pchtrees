@@ -7,6 +7,7 @@ program tree
   use Time_Parameters ! parameters.F90
   use Tree_Routines ! tree_routines.F90
   use Modified_Merger_Tree ! modified_merger_tree.F90
+  use Overdensity
   use Parameter_File
   use HDF5
   use IO
@@ -20,11 +21,11 @@ program tree
   ! integer, parameter :: long = selected_real_kind(9,99)
   real, allocatable  :: wlev(:),alev(:)
   integer, allocatable  :: ifraglev(:)
-  real :: mphalo,ahalo,deltcrit,sigmacdm,zmax
+  real :: mphalo,ahalo,sigmacdm,zmax
   integer :: ierr,nhalomax,nhalo,ilev
   integer, allocatable :: nhalolev(:),jphalo(:)
   integer :: iter,iseed0,iseed
-  EXTERNAL deltcrit,sigmacdm,split
+  EXTERNAL sigmacdm,split
   real :: dc
 
   ! Treewalk counter
@@ -136,7 +137,7 @@ program tree
 
       ! Build the tree
       call make_tree(mphalo,ahalo,pa_output%mres,alev,pa_output%nlev,&
-        & iseed,split,sigmacdm,deltcrit, &
+        & iseed,split,sigmacdm, &
         & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
 
       iter=iter+1
@@ -173,8 +174,8 @@ program tree
   ! Write the trees table
   call write_tree_table(pa_output%file_path, trees_nhalos)
 
-  ! Write the redshift list
-  ! TODO FIXME
+  ! Write the aexp list
+  call write_output_times(pa_output%file_path, alev)
 
   ! Write the header
   ! Currently only support single file output
