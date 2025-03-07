@@ -2,6 +2,7 @@ module IO
   use hdf5
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
+  use Parameter_File
   use Overdensity
   implicit none
 
@@ -23,6 +24,9 @@ module IO
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
 
 contains
+  
+  ! TODO
+  ! - split into multiple files
   
   ! ############################################################ 
   subroutine create_hdf5_output(filename, N_min, N_max)
@@ -175,6 +179,35 @@ contains
   end subroutine write_tree_table
 
   ! ############################################################ 
+  subroutine write_parameters(filename)
+    implicit none
+
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
+
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    ! Open file
+    call open_existing_file(filename, file_id, 'write_parameters')
+    
+    ! Create or open group
+    call h5gcreate_f(file_id, '/Parameters', group_id, hdferr)
+    call h5gopen_f(file_id, '/Parameters', group_id, hdferr)
+
+    ! Write attributes
+    call write_group_attr_real(group_id, 'tree_G0', pa_tree%G0)
+    call write_group_attr_real(group_id, 'tree_gamma_1', pa_tree%gamma_1)
+    call write_group_attr_real(group_id, 'tree_gamma_2', pa_tree%gamma_2)
+    call write_group_attr_real(group_id, 'tree_eps_1', pa_tree%eps1)
+    call write_group_attr_real(group_id, 'tree_eps_2', pa_tree%eps2)
+
+    ! Close resources
+    call h5gclose_f(group_id, hdferr)
+    call h5fclose_f(file_id, hdferr)
+
+  end subroutine write_parameters
+
+  ! ############################################################ 
   subroutine write_header(filename, group_name, &
       & last_snapshot, nhalos_thisfile, nhalos_total, & 
       & ntrees_thisfile, ntrees_total, nfiles)
@@ -230,8 +263,12 @@ contains
     type is (integer)
       call h5acreate_f(group_id, attr_name, H5T_NATIVE_INTEGER, space_id, attr_id, hdferr)
       call h5awrite_f(attr_id, H5T_NATIVE_INTEGER, attr_value, attr_dims, hdferr)
+    type is (real)
+      call h5acreate_f(group_id, attr_name, H5T_NATIVE_REAL, space_id, attr_id, hdferr)
+      call h5awrite_f(attr_id, H5T_NATIVE_REAL, attr_value, attr_dims, hdferr)
     class default
       write(*,*) "Unknown attribute type!" 
+      write(*,*) "Attribute:", trim(attr_name)
       stop
     end select
 
@@ -239,6 +276,35 @@ contains
     call h5sclose_f(space_id, hdferr)
   end subroutine
 
+  ! ############################################################
+  subroutine write_group_attr_real(group_id, attr_name, attr_value)
+    implicit none
+    integer(hid_t), intent(in) :: group_id
+    character(*), intent(in) :: attr_name
+    class(*), intent(in) :: attr_value
+
+    integer(hid_t) :: attr_id, space_id
+    integer(hsize_t) :: attr_dims(1)
+    integer :: hdferr
+
+    ! Create dataspace for scalar attributes
+    attr_dims = (/ 1 /)
+    call h5screate_simple_f(1, attr_dims, space_id, hdferr)
+
+    select type(attr_value)
+    type is (real)
+      call h5acreate_f(group_id, attr_name, H5T_NATIVE_REAL, space_id, attr_id, hdferr)
+      call h5awrite_f(attr_id, H5T_NATIVE_REAL, attr_value, attr_dims, hdferr)
+    class default
+      write(*,*) "Unknown attribute type!" 
+      write(*,*) "Attribute:", trim(attr_name)
+      stop
+    end select
+
+    call h5aclose_f(attr_id, hdferr)
+    call h5sclose_f(space_id, hdferr)
+  end subroutine
+ 
   ! ############################################################
   subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
     implicit none

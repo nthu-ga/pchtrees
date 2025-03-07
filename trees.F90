@@ -183,7 +183,7 @@ program tree
     & sum(trees_nhalos), sum(trees_nhalos), ntree, ntree, 1)
  
   ! Write parameters
-  ! TODO FIXME
+  call write_parameters(pa_output%file_path)
 
   deallocate(trees_nhalos)
   deallocate(wlev,alev,ifraglev)
