@@ -1,5 +1,11 @@
 module Cosmological_Parameters
-      !
-      ! Floats
-      real h0,lambda0,omega0,omegab,CMB_T0
+  implicit none
+
+  ! These have simple names because they're used heavily throughout the code.
+  real :: h0
+  real :: omega0
+  real :: lambda0
+  real :: omegab
+  real :: CMB_T0
+
 end module Cosmological_Parameters

@@ -14,8 +14,24 @@ module Parameter_File
     integer :: nlev = 10
     ! Mass resolution
     real    :: mres = 1.0e+08
+    ! Initial random seed
+    integer :: iseed = -8635
+
   end type Parameters_Output
   type(Parameters_Output) :: pa_output
+ 
+  type Parameters_Cosmology
+    real :: omega0  = 0.25
+    real :: lambda0 = 0.75
+    real :: h0      = 0.73
+    real :: omegab  = 0.04
+    real :: sigma8  = 0.9   !power spectrum amplitude set regardless of other parameters
+
+    ! Computed at runtime
+    ! Omega_m x h ignoring effect of baryons
+    real :: Gamma   
+  end type Parameters_Cosmology
+  type(Parameters_Cosmology) :: pa_cosmo
 
   type Parameters_Tree
     ! Parameters used to modify the merger rate used in split.F90
@@ -89,11 +105,25 @@ contains
       call get_value(child, 'file_path', pa_output%file_path, './output_tree.hdf5')
       call get_value(child, 'nlev', pa_output%nlev, 10)
       call get_value(child, 'mres', pa_output%mres, 1.0e+8)
+      call get_value(child, 'iseed', pa_output%iseed, -8365)
 
-      print '(2a)',  'Output file path: ', pa_output%file_path
-      print '(a,i10)', 'Tree levels: ', pa_output%nlev
+      print '(2a)',      'Output file path: ', pa_output%file_path
+      print '(a,i10)',   'Tree levels: ', pa_output%nlev
       print '(a,e10.4)', 'Mass resolution: ', pa_output%mres
+      print '(a,i10)',   'Random seeds: ', pa_output%iseed
     end if output_parameters
+
+    ! Get [cosmology] section
+    call get_value(table, 'cosmology', child, requested=.false.)
+    cosmo_parameters: if (associated(child)) then
+      call get_value(child, 'omega0',  pa_cosmo%omega0)
+      call get_value(child, 'lambda0', pa_cosmo%lambda0)
+      call get_value(child, 'h0',      pa_cosmo%h0)
+      call get_value(child, 'omegab',  pa_cosmo%omegab)
+      call get_value(child, 'sigma8',  pa_cosmo%sigma8) 
+    end if cosmo_parameters
+    ! Compute Gamma
+    pa_cosmo%Gamma = pa_cosmo%omega0*pa_cosmo%h0 
 
     ! Get [tree] section.
     call get_value(table, 'tree', child, requested=.false.)
