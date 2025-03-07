@@ -121,7 +121,7 @@ contains
     integer :: i
 
     ! Write expansion factors at each output time
-    call write_1d_array_real(filename, '/OutputTimes/aexp', alev, &
+    call write_1d_array_real(filename, '/OutputTimes/ExpansionFactor', alev, &
       & overwrite=.false.)
 
     allocate(output_time_property(size(alev)))
@@ -130,14 +130,14 @@ contains
     do i=1,size(alev)
       output_time_property = deltcrit(alev(i))
     end do
-    call write_1d_array_real(filename, '/OutputTimes/deltacrit', output_time_property, &
+    call write_1d_array_real(filename, '/OutputTimes/DeltaCrit', output_time_property, &
       & overwrite=.false.)
 
     ! Write redshifts
     do i=1,size(alev)
       output_time_property = (1.0/alev(i))-1.0
     end do
-    call write_1d_array_real(filename, '/OutputTimes/redshift', output_time_property, &
+    call write_1d_array_real(filename, '/OutputTimes/Redshift', output_time_property, &
       & overwrite=.false.)
 
     deallocate(output_time_property)
