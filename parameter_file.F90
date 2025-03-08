@@ -5,6 +5,9 @@ module Parameter_File
 
   type Parameters_Runtime
     character(len=:), allocatable :: data_path
+
+    ! Initial random seed
+    integer :: iseed = -8635
   end type Parameters_Runtime
   type(Parameters_Runtime) :: pa_runtime
 
@@ -14,9 +17,6 @@ module Parameter_File
     integer :: nlev = 10
     ! Mass resolution
     real    :: mres = 1.0e+08
-    ! Initial random seed
-    integer :: iseed = -8635
-
   end type Parameters_Output
   type(Parameters_Output) :: pa_output
  
@@ -25,8 +25,9 @@ module Parameter_File
     real :: lambda0 = 0.75
     real :: h0      = 0.73
     real :: omegab  = 0.04
-    real :: sigma8  = 0.9   !power spectrum amplitude set regardless of other parameters
-
+    real :: sigma8  = 0.9   ! Power spectrum amplitude set regardless of other parameters
+    real :: CMB_T0  = 2.73  ! K
+    
     ! Computed at runtime
     ! Omega_m x h ignoring effect of baryons
     real :: Gamma   
@@ -70,10 +71,11 @@ contains
     type(toml_table), allocatable :: table
     type(toml_table), pointer     :: child
 
-    inquire (file=file_name, exist=file_exists)
+    ! FUTURE: make printing optional, do separately
 
+    inquire (file=file_name, exist=file_exists)
     if (.not. file_exists) then
-      write (stderr, '("Error: TOML file ", a, " not found")') file_name
+      write (stderr, '("Error: Parameter file ", a, " not found")') file_name
       stop
     end if
 
@@ -96,21 +98,22 @@ contains
     call get_value(table, 'runtime', child, requested=.false.)
     runtime_parameters: if (associated(child)) then
       call get_value(child, 'data_path', pa_runtime%data_path, './')
+      call get_value(child, 'iseed',     pa_runtime%iseed, -8365)
+
       print '(2a)', 'Data path: ', pa_runtime%data_path
+      print '(a,i10)', 'Random seeds: ', pa_runtime%iseed
     end if runtime_parameters
 
     ! Get [output] section.
-    call get_value(table, 'runtime', child, requested=.false.)
+    call get_value(table, 'output', child, requested=.false.)
     output_parameters: if (associated(child)) then
       call get_value(child, 'file_path', pa_output%file_path, './output_tree.hdf5')
       call get_value(child, 'nlev', pa_output%nlev, 10)
       call get_value(child, 'mres', pa_output%mres, 1.0e+8)
-      call get_value(child, 'iseed', pa_output%iseed, -8365)
 
       print '(2a)',      'Output file path: ', pa_output%file_path
       print '(a,i10)',   'Tree levels: ', pa_output%nlev
       print '(a,e10.4)', 'Mass resolution: ', pa_output%mres
-      print '(a,i10)',   'Random seeds: ', pa_output%iseed
     end if output_parameters
 
     ! Get [cosmology] section
@@ -121,6 +124,7 @@ contains
       call get_value(child, 'h0',      pa_cosmo%h0)
       call get_value(child, 'omegab',  pa_cosmo%omegab)
       call get_value(child, 'sigma8',  pa_cosmo%sigma8) 
+      call get_value(child, 'cmb_T0',  pa_cosmo%CMB_T0) 
     end if cosmo_parameters
     ! Compute Gamma
     pa_cosmo%Gamma = pa_cosmo%omega0*pa_cosmo%h0 
@@ -136,5 +140,60 @@ contains
     end if tree_parameters
 
   end subroutine parse_parameter_file
+
+  ! ############################################################ 
+  subroutine dump_parameters_to_terminal()
+    implicit none
+    
+    write(*,*) '[runtime]'
+    call print_kv('data_path', './')
+    call print_kv('iseed', pa_runtime%iseed)
+    write(*,*)
+    write(*,*) '[output]'
+    call print_kv('file_path', './output_tree.hdf5')
+    call print_kv('nlev', pa_output%nlev)
+    call print_kv('mres', pa_output%mres)
+    write(*,*)
+    write(*,*) '[cosmology]'
+    call print_kv('omega0', pa_cosmo%omega0)
+    call print_kv('lambda0', pa_cosmo%lambda0)
+    call print_kv('h0', pa_cosmo%h0)
+    call print_kv('omegab', pa_cosmo%omegab)
+    call print_kv('sigma8', pa_cosmo%sigma8)
+    call print_kv('CMB_T0', pa_cosmo%CMB_T0)
+    write(*,*)
+    write(*,*) '[tree]'
+    call print_kv('G0', pa_tree%G0)
+    call print_kv('gamma_1', pa_tree%gamma_1)
+    call print_kv('gamma_2', pa_tree%gamma_2)
+    call print_kv('eps1', pa_tree%eps1)
+    call print_kv('eps2', pa_tree%eps2)
+
+  end subroutine dump_parameters_to_terminal
+
+  ! ############################################################ 
+  subroutine print_kv(k, v, unit)
+    implicit none
+
+    character(len=*), intent(in) :: k
+    class(*), intent(in) :: v
+    integer, intent(in), optional :: unit
+    
+    integer :: output_unit
+  
+    ! Use provided unit, else default to stdout (unit 6)
+    output_unit = merge(unit, 6, present(unit))
+
+    select type(v)
+    type is (integer)
+      write(output_unit, '(1X, A, A, I0)') trim(k), ' = ', v
+    type is (real)
+      write(output_unit, '(1X, A, A, G0)') trim(k), ' = ', v
+    type is (character(len=*))
+      write(output_unit, '(1X, A, A, A, A)') trim(k), ' = "', trim(v), '"'
+    class default
+      write(output_unit, *) 'Unsupported type'
+    end select
+  end subroutine print_kv
 
 end module Parameter_File

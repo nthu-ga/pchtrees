@@ -40,20 +40,28 @@ program tree
 
   ! Setup
   call read_command_line_args()
+
+  if (found_switch_defaults) then
+    ! Special case, just print default parameters in TOML format
+    call dump_parameters_to_terminal()
+    stop
+  end if
+
   call parse_parameter_file(trim(arg_pf_path))
   call h5open_f(hdferr)
   
-  ! Set the cosmology parameters from the parameter file values
+  ! Set the variables in the cosmological parameters module from the parameter
+  ! file values.
   ! 
-  ! FUTURE: consider a neater / more robust way to do this, but 
+  ! FUTURE: consider a neater / more robust way to do this initialization, but
   ! without introducing unnecessary module dependencies.
-  !
+  
   h0      = pa_cosmo%h0
   omega0  = pa_cosmo%omega0
   lambda0 = pa_cosmo%lambda0
   omegab  = pa_cosmo%omegab
   CMB_T0  = pa_cosmo%CMB_T0
-  Gamma   = pa_cosmo%Gamma
+  ! Gamma   = pa_cosmo%Gamma
 
   ! Mass of halo for which the tree is to be grown. The mass resolution of the
   ! tree and the number of trees to grow. 
@@ -81,7 +89,7 @@ program tree
   nhalo = 0
   
   ! Set initial seed
-  iseed0 = pa_runtime%iseed0
+  iseed0 = pa_runtime%iseed
 
   ! Set up the array of redshifts at which the tree is to be stored
   write(0,*) 'The redshifts at which the tree will be stored:'

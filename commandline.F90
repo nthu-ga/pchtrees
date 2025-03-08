@@ -3,6 +3,7 @@ module Commandline
     
   character(len=64) :: arg_pf_path
   logical :: found_pf_path = .false.
+  logical :: found_switch_defaults = .false.
 
 contains 
 
@@ -21,6 +22,11 @@ contains
 
         ! Keyword argument 
         select case (trim(argval))
+        case ('--defaults')
+          if (.not.found_switch_defaults) then
+            write(*,*) 'Keyword argument: defaults'
+            found_switch_defaults = .true.
+          end if
         case ('--params')
           if (i + 1 <= nargs) then
             if (.not.found_pf_path) then
