@@ -56,12 +56,22 @@ program tree
   ! FUTURE: consider a neater / more robust way to do this initialization, but
   ! without introducing unnecessary module dependencies.
   
-  h0      = pa_cosmo%h0
   omega0  = pa_cosmo%omega0
   lambda0 = pa_cosmo%lambda0
+  h0      = pa_cosmo%h0
   omegab  = pa_cosmo%omegab
   CMB_T0  = pa_cosmo%CMB_T0
-  ! Gamma   = pa_cosmo%Gamma
+  sigma8  = pa_cosmo%sigma8
+
+  ! Set variables in the power spectrum parameters module.
+  !
+  ! FUTURE: see above for cosmological parameters.
+
+  itrans = pa_powerspec%itrans
+  nspec  = pa_powerspec%nspec
+  dndlnk = pa_powerspec%dndlnk
+  kref   = pa_powerspec%kref
+  gamma  = pa_powerspec%gamma
 
   ! Mass of halo for which the tree is to be grown. The mass resolution of the
   ! tree and the number of trees to grow. 
@@ -69,25 +79,6 @@ program tree
   mphalo=1.0e+14  !halo mass at base of tree
   ntree=2         !number of trees
 
-! Cosmological and Power Spectrum parameters
-! (passed in module  Cosmological_Parameters and Power_Spectrum_Parameters)
-
- pkinfile='pk_Mill.dat' !Tabulated Millennium Simulation linear P(k)
-! itrans=-1  !indicates use transfer function tabulated in file pkinfile
-  itrans=1   !indicates use BBKS CDM transfer function with specified Gamma and Omega0
-!  itrans=2   !indicates use Bond & Efstathiou CDM transfer function with specified Gamma and Omega0
-! itrans=3   !indicates use Eisenstein and Hu CDM transfer function with specified Omega0, Omegab and h0
-! CMB_T0=2.73 !For Eisenstein and Hu CDM transfer function one must specify the CMB temperature
-
-!Set primordial P(k) parameters (ignored if itrans=-1)
- nspec=1.0     !primoridial power spectrum spectral index
- dndlnk=0.0    !allow running spectral index by setting ne.0
- kref=1.0      !pivot point for running index
-
-  ierr = 1     !initial error status us to control make_tree()
-  nhalomax = 0 !initialise
-  nhalo = 0
-  
   ! Set initial seed
   iseed0 = pa_runtime%iseed
 
@@ -117,6 +108,10 @@ program tree
   allocate(nhalolev(pa_output%nlev))
   allocate(jphalo(pa_output%nlev))
 
+  ierr     = 1 ! initial error status us to control make_tree()
+  nhalomax = 0 ! initialise
+  nhalo    = 0
+  
   ! Start generating trees
   generate_trees: do itree=1,ntree
     iter = 1   

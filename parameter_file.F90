@@ -25,14 +25,37 @@ module Parameter_File
     real :: lambda0 = 0.75
     real :: h0      = 0.73
     real :: omegab  = 0.04
-    real :: sigma8  = 0.9   ! Power spectrum amplitude set regardless of other parameters
+
+    ! Power spectrum amplitude set regardless of other parameters
+    real :: sigma8  = 0.9  
+
+    ! For Eisenstein and Hu CDM transfer function one must specify the CMB temperature
     real :: CMB_T0  = 2.73  ! K
     
-    ! Computed at runtime
-    ! Omega_m x h ignoring effect of baryons
-    real :: Gamma   
   end type Parameters_Cosmology
   type(Parameters_Cosmology) :: pa_cosmo
+
+  type Parameters_Powerspectrum   
+    ! itrans=-1  !indicates use transfer function tabulated in file pkinfile
+    ! itrans=1   !indicates use BBKS CDM transfer function with specified Gamma and Omega0
+    ! itrans=2   !indicates use Bond & Efstathiou CDM transfer function with specified Gamma and Omega0
+    ! itrans=3   !indicates use Eisenstein and Hu CDM transfer function with specified Omega0, Omegab and h0
+    integer :: itrans = 1
+
+    !Tabulated Millennium Simulation linear P(k)
+    character(len=:), allocatable :: pkinfile 
+
+    ! Primordial P(k) parameters (ignored if itrans=-1)
+    real :: nspec = 1.0
+    real :: dndlnk = 0.0
+    real :: kref = 1.0
+
+    ! Computed at runtime
+    ! Omega_m x h ignoring effect of baryons
+    real :: gamma   
+  end type Parameters_Powerspectrum
+  type(Parameters_Powerspectrum) :: pa_powerspec
+
 
   type Parameters_Tree
     ! Parameters used to modify the merger rate used in split.F90
@@ -103,18 +126,25 @@ contains
       print '(2a)', 'Data path: ', pa_runtime%data_path
       print '(a,i10)', 'Random seeds: ', pa_runtime%iseed
     end if runtime_parameters
-
+    
+    write(*,*)
+    write(*,*) '[runtime]'
+    call print_kv('data_path', './')
+    call print_kv('iseed', pa_runtime%iseed)
+      
     ! Get [output] section.
     call get_value(table, 'output', child, requested=.false.)
     output_parameters: if (associated(child)) then
       call get_value(child, 'file_path', pa_output%file_path, './output_tree.hdf5')
       call get_value(child, 'nlev', pa_output%nlev, 10)
       call get_value(child, 'mres', pa_output%mres, 1.0e+8)
-
-      print '(2a)',      'Output file path: ', pa_output%file_path
-      print '(a,i10)',   'Tree levels: ', pa_output%nlev
-      print '(a,e10.4)', 'Mass resolution: ', pa_output%mres
     end if output_parameters
+
+    write(*,*)
+    write(*,*) '[output]'
+    call print_kv('file_path', './output_tree.hdf5')
+    call print_kv('nlev', pa_output%nlev)
+    call print_kv('mres', pa_output%mres)
 
     ! Get [cosmology] section
     call get_value(table, 'cosmology', child, requested=.false.)
@@ -126,8 +156,30 @@ contains
       call get_value(child, 'sigma8',  pa_cosmo%sigma8) 
       call get_value(child, 'cmb_T0',  pa_cosmo%CMB_T0) 
     end if cosmo_parameters
-    ! Compute Gamma
-    pa_cosmo%Gamma = pa_cosmo%omega0*pa_cosmo%h0 
+
+    write(*,*)
+    write(*,*) '[cosmology]'
+    call print_kv('omega0',  pa_cosmo%omega0)
+    call print_kv('lambda0', pa_cosmo%lambda0)
+    call print_kv('h0',      pa_cosmo%h0)
+    call print_kv('omegab',  pa_cosmo%omegab)
+    call print_kv('sigma8',  pa_cosmo%sigma8)
+    call print_kv('CMB_T0',  pa_cosmo%CMB_T0)
+
+    ! Get [powerspec] section
+    call get_value(table, 'powerspec', child, requested=.false.)
+    powerspec_parameters: if (associated(child)) then
+      call get_value(child, 'pkinfile', pa_powerspec%pkinfile, 'pk_Mill.dat')
+    
+      call get_value(child, 'itrans', pa_powerspec%itrans)
+      call get_value(child, 'nspec',  pa_powerspec%nspec)
+      call get_value(child, 'dndlnk', pa_powerspec%dndlnk)
+      call get_value(child, 'kref',   pa_powerspec%kref)
+
+    end if powerspec_parameters
+
+    ! Compute powerspec gamma
+    pa_powerspec%gamma = pa_cosmo%omega0*pa_cosmo%h0 
 
     ! Get [tree] section.
     call get_value(table, 'tree', child, requested=.false.)
@@ -138,6 +190,16 @@ contains
       call get_value(child, 'eps1',    pa_tree%eps1,     0.1)
       call get_value(child, 'eps2',    pa_tree%eps2,     0.1)
     end if tree_parameters
+
+    write(*,*)
+    write(*,*) '[tree]'
+    call print_kv('G0', pa_tree%G0)
+    call print_kv('gamma_1', pa_tree%gamma_1)
+    call print_kv('gamma_2', pa_tree%gamma_2)
+    call print_kv('eps1', pa_tree%eps1)
+    call print_kv('eps2', pa_tree%eps2)
+    
+    write(*,*)
 
   end subroutine parse_parameter_file
 
