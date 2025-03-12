@@ -6,7 +6,8 @@ module Power_Spectrum_Parameters
   integer, parameter :: Transfer_Function_Table_N_Max = 1800
   
   ! Integers
-  integer :: igwave,ireset,itrans,nktab,Trans_Func_Table_N_Points
+  integer :: itrans
+  integer :: igwave,ireset,nktab,Trans_Func_Table_N_Points
   
   ! Array dimensions
   integer, parameter :: NKTABMAX=1000
@@ -15,7 +16,8 @@ module Power_Spectrum_Parameters
   ! Floats
   real :: gamma
   real :: dndlnk,kref,lnktab(NKTABMAX),lnpktab(NKTABMAX),mwdm,nspec,sigma8,scla,sclm
-  real :: Transfer_Function_Table_lnk(Transfer_Function_Table_N_Max),Transfer_Function_Table_lnTk(Transfer_Function_Table_N_Max)
+  real :: Transfer_Function_Table_lnk(Transfer_Function_Table_N_Max)
+  real :: Transfer_Function_Table_lnTk(Transfer_Function_Table_N_Max)
   
   ! Logicals
   logical :: WDMrun

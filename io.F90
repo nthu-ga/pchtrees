@@ -2,6 +2,9 @@ module IO
   use hdf5
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
+  use Cosmological_Parameters
+  use Power_Spectrum_Parameters
+  use Runtime_Parameters
   use Parameter_File
   use Overdensity
   implicit none
@@ -195,11 +198,30 @@ contains
     call h5gopen_f(file_id, '/Parameters', group_id, hdferr)
 
     ! Write attributes
+    call write_group_attr(group_id, 'run_iseed', iseed0)
+    
     call write_group_attr(group_id, 'tree_G0', pa_tree%G0)
     call write_group_attr(group_id, 'tree_gamma_1', pa_tree%gamma_1)
     call write_group_attr(group_id, 'tree_gamma_2', pa_tree%gamma_2)
     call write_group_attr(group_id, 'tree_eps_1', pa_tree%eps1)
     call write_group_attr(group_id, 'tree_eps_2', pa_tree%eps2)
+  
+    ! From cosmology_parameters
+    call write_group_attr(group_id, 'cosmo_h0', pa_cosmo%h0)
+    call write_group_attr(group_id, 'cosmo_omega0', pa_cosmo%omega0)
+    call write_group_attr(group_id, 'cosmo_lambda0', pa_cosmo%lambda0)
+    call write_group_attr(group_id, 'cosmo_omegab', pa_cosmo%omegab)
+    call write_group_attr(group_id, 'cosmo_CMBT0', pa_cosmo%CMB_T0)
+
+    ! From power_spectrum_parameters
+    call write_group_attr(group_id, 'pspec_itrans', itrans)
+    call write_group_attr(group_id, 'pspec_gamma', gamma)
+    call write_group_attr(group_id, 'pspec_kref', kref)
+    call write_group_attr(group_id, 'pspec_nspec', nspec)
+    call write_group_attr(group_id, 'pspec_sigma8', sigma8)
+    call write_group_attr(group_id, 'pspec_infile', trim(pkinfile))
+    call write_group_attr(group_id, 'pspec_splinefile', trim(splinefile))
+    call write_group_attr(group_id, 'pspec_tffile', trim(tffile))
 
     ! Close resources
     call h5gclose_f(group_id, hdferr)
@@ -623,7 +645,7 @@ contains
     implicit none
     character(len=*), intent(in) :: filename       ! File name
     character(len=*), intent(in) :: dataset_path   ! Full HDF5 dataset path
-    real, dimension(:), intent(in) :: data      ! 1D array data
+    real, dimension(:), intent(in) :: data         ! 1D array
     logical, intent(in), optional :: overwrite     ! Whether to overwrite existing dataset
    
     integer(hid_t) :: file_id, dset_id, dspace_id, plist_id

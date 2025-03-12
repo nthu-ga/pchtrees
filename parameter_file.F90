@@ -3,6 +3,9 @@ module Parameter_File
   public :: parse_parameter_file
   public :: pa_runtime, pa_output, pa_tree
 
+  integer, parameter :: UNIT_STDOUT = 6
+  private :: UNIT_STDOUT
+
   type Parameters_Runtime
     character(len=:), allocatable :: data_path
 
@@ -26,9 +29,6 @@ module Parameter_File
     real :: h0      = 0.73
     real :: omegab  = 0.04
 
-    ! Power spectrum amplitude set regardless of other parameters
-    real :: sigma8  = 0.9  
-
     ! For Eisenstein and Hu CDM transfer function one must specify the CMB temperature
     real :: CMB_T0  = 2.73  ! K
     
@@ -46,16 +46,19 @@ module Parameter_File
     character(len=:), allocatable :: pkinfile 
 
     ! Primordial P(k) parameters (ignored if itrans=-1)
-    real :: nspec = 1.0
+    real :: nspec  = 1.0
     real :: dndlnk = 0.0
-    real :: kref = 1.0
+    real :: kref   = 1.0
+
+    ! Power spectrum amplitude set regardless of other parameters
+    real :: sigma8  = 0.9  
+
 
     ! Computed at runtime
     ! Omega_m x h ignoring effect of baryons
     real :: gamma   
   end type Parameters_Powerspectrum
   type(Parameters_Powerspectrum) :: pa_powerspec
-
 
   type Parameters_Tree
     ! Parameters used to modify the merger rate used in split.F90
@@ -82,19 +85,24 @@ module Parameter_File
 
 contains
 
-  subroutine parse_parameter_file(file_name)
+  subroutine parse_parameter_file(file_name, dump_parameters_unit)
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
     use :: tomlf
     implicit none
-    ! character(len=*), parameter :: FILE_NAME = 'sample.toml'
+    
     character(len=*), intent(in) :: file_name
+    integer, intent(in), optional :: dump_parameters_unit
+    
+    logical :: dump_parameters
+    integer :: dpu
 
     integer                       :: fu, rc
     logical                       :: file_exists
     type(toml_table), allocatable :: table
     type(toml_table), pointer     :: child
 
-    ! FUTURE: make printing optional, do separately
+    dump_parameters = present(dump_parameters_unit)
+    dpu = merge(dump_parameters_unit, 6, dump_parameters)
 
     inquire (file=file_name, exist=file_exists)
     if (.not. file_exists) then
@@ -127,11 +135,13 @@ contains
       print '(a,i10)', 'Random seeds: ', pa_runtime%iseed
     end if runtime_parameters
     
-    write(*,*)
-    write(*,*) '[runtime]'
-    call print_kv('data_path', './')
-    call print_kv('iseed', pa_runtime%iseed)
-      
+    if (dump_parameters) then
+      write(*,*)
+      write(*,*) '[runtime]'
+      call print_kv('data_path', './')
+      call print_kv('iseed', pa_runtime%iseed)
+    end if
+
     ! Get [output] section.
     call get_value(table, 'output', child, requested=.false.)
     output_parameters: if (associated(child)) then
@@ -140,11 +150,13 @@ contains
       call get_value(child, 'mres', pa_output%mres, 1.0e+8)
     end if output_parameters
 
-    write(*,*)
-    write(*,*) '[output]'
-    call print_kv('file_path', './output_tree.hdf5')
-    call print_kv('nlev', pa_output%nlev)
-    call print_kv('mres', pa_output%mres)
+    if (dump_parameters) then
+      write(*,*)
+      write(*,*) '[output]'
+      call print_kv('file_path', './output_tree.hdf5')
+      call print_kv('nlev', pa_output%nlev)
+      call print_kv('mres', pa_output%mres)
+    end if
 
     ! Get [cosmology] section
     call get_value(table, 'cosmology', child, requested=.false.)
@@ -153,18 +165,18 @@ contains
       call get_value(child, 'lambda0', pa_cosmo%lambda0)
       call get_value(child, 'h0',      pa_cosmo%h0)
       call get_value(child, 'omegab',  pa_cosmo%omegab)
-      call get_value(child, 'sigma8',  pa_cosmo%sigma8) 
       call get_value(child, 'cmb_T0',  pa_cosmo%CMB_T0) 
     end if cosmo_parameters
 
-    write(*,*)
-    write(*,*) '[cosmology]'
-    call print_kv('omega0',  pa_cosmo%omega0)
-    call print_kv('lambda0', pa_cosmo%lambda0)
-    call print_kv('h0',      pa_cosmo%h0)
-    call print_kv('omegab',  pa_cosmo%omegab)
-    call print_kv('sigma8',  pa_cosmo%sigma8)
-    call print_kv('CMB_T0',  pa_cosmo%CMB_T0)
+    if (dump_parameters) then
+      write(*,*)
+      write(*,*) '[cosmology]'
+      call print_kv('omega0',  pa_cosmo%omega0)
+      call print_kv('lambda0', pa_cosmo%lambda0)
+      call print_kv('h0',      pa_cosmo%h0)
+      call print_kv('omegab',  pa_cosmo%omegab)
+      call print_kv('CMB_T0',  pa_cosmo%CMB_T0)
+    end if
 
     ! Get [powerspec] section
     call get_value(table, 'powerspec', child, requested=.false.)
@@ -175,11 +187,22 @@ contains
       call get_value(child, 'nspec',  pa_powerspec%nspec)
       call get_value(child, 'dndlnk', pa_powerspec%dndlnk)
       call get_value(child, 'kref',   pa_powerspec%kref)
-
+      call get_value(child, 'sigma8', pa_powerspec%sigma8) 
     end if powerspec_parameters
 
     ! Compute powerspec gamma
     pa_powerspec%gamma = pa_cosmo%omega0*pa_cosmo%h0 
+
+    if (dump_parameters) then
+      write(*,*)
+      write(*,*) '[powerspec]'
+      call print_kv('itrans',   pa_powerspec%itrans)
+      call print_kv('pkinfile', pa_powerspec%pkinfile)
+      call print_kv('nspec',    pa_powerspec%nspec)
+      call print_kv('dndlnk',   pa_powerspec%dndlnk)
+      call print_kv('kref',     pa_powerspec%kref)
+      call print_kv('sigma8',   pa_powerspec%sigma8)
+    end if 
 
     ! Get [tree] section.
     call get_value(table, 'tree', child, requested=.false.)
@@ -191,48 +214,19 @@ contains
       call get_value(child, 'eps2',    pa_tree%eps2,     0.1)
     end if tree_parameters
 
-    write(*,*)
-    write(*,*) '[tree]'
-    call print_kv('G0', pa_tree%G0)
-    call print_kv('gamma_1', pa_tree%gamma_1)
-    call print_kv('gamma_2', pa_tree%gamma_2)
-    call print_kv('eps1', pa_tree%eps1)
-    call print_kv('eps2', pa_tree%eps2)
-    
-    write(*,*)
+    if (dump_parameters) then
+      write(*,*)
+      write(*,*) '[tree]'
+      call print_kv('G0', pa_tree%G0)
+      call print_kv('gamma_1', pa_tree%gamma_1)
+      call print_kv('gamma_2', pa_tree%gamma_2)
+      call print_kv('eps1', pa_tree%eps1)
+      call print_kv('eps2', pa_tree%eps2)
+    end if
 
+    write(*,*)
   end subroutine parse_parameter_file
-
-  ! ############################################################ 
-  subroutine dump_parameters_to_terminal()
-    implicit none
-    
-    write(*,*) '[runtime]'
-    call print_kv('data_path', './')
-    call print_kv('iseed', pa_runtime%iseed)
-    write(*,*)
-    write(*,*) '[output]'
-    call print_kv('file_path', './output_tree.hdf5')
-    call print_kv('nlev', pa_output%nlev)
-    call print_kv('mres', pa_output%mres)
-    write(*,*)
-    write(*,*) '[cosmology]'
-    call print_kv('omega0', pa_cosmo%omega0)
-    call print_kv('lambda0', pa_cosmo%lambda0)
-    call print_kv('h0', pa_cosmo%h0)
-    call print_kv('omegab', pa_cosmo%omegab)
-    call print_kv('sigma8', pa_cosmo%sigma8)
-    call print_kv('CMB_T0', pa_cosmo%CMB_T0)
-    write(*,*)
-    write(*,*) '[tree]'
-    call print_kv('G0', pa_tree%G0)
-    call print_kv('gamma_1', pa_tree%gamma_1)
-    call print_kv('gamma_2', pa_tree%gamma_2)
-    call print_kv('eps1', pa_tree%eps1)
-    call print_kv('eps2', pa_tree%eps2)
-
-  end subroutine dump_parameters_to_terminal
-
+  
   ! ############################################################ 
   subroutine print_kv(k, v, unit)
     implicit none
