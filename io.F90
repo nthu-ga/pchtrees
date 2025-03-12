@@ -273,7 +273,7 @@ contains
     character(*), intent(in) :: attr_name
     class(*), intent(in) :: attr_value
 
-    integer(hid_t) :: attr_id, space_id
+    integer(hid_t) :: attr_id, space_id, dtype_id
     integer(hsize_t) :: attr_dims(1)
     integer :: hdferr
 
@@ -288,7 +288,13 @@ contains
     type is (real)
       call h5acreate_f(group_id, attr_name, H5T_NATIVE_REAL, space_id, attr_id, hdferr)
       call h5awrite_f(attr_id, H5T_NATIVE_REAL, attr_value, attr_dims, hdferr)
-    class default
+    type is (character(len=*))
+      call h5tcopy_f(H5T_NATIVE_CHARACTER, dtype_id, hdferr)
+      call h5tset_size_f(dtype_id, len(attr_value), hdferr)
+
+      call h5acreate_f(group_id, attr_name, dtype_id, space_id, attr_id, hdferr)
+      call h5awrite_f(attr_id, dtype_id, attr_value, attr_dims, hdferr)
+     class default
       write(*,*) "Unknown attribute type!" 
       write(*,*) "Attribute:", trim(attr_name)
       stop
