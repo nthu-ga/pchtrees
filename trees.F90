@@ -22,9 +22,9 @@ program tree
   integer :: ilev, nlev
   ! APC seems this is not used?
   ! integer, parameter :: long = selected_real_kind(9,99)
-  real, allocatable :: wlev(:)
-  real, allocatable :: alev(:)
-  integer, allocatable  :: ifraglev(:)
+  real,    allocatable :: wlev(:)
+  real,    allocatable :: alev(:)
+  integer, allocatable :: ifraglev(:)
   real :: mphalo,ahalo,sigmacdm,zmax
   integer :: ierr,nhalomax,nhalo
   integer :: iter, iseed
@@ -51,7 +51,8 @@ program tree
   read(arg_mphalo, *, IOSTAT=ierr) mphalo ! Halo mass at base of tree
   read(arg_ahalo, *, IOSTAT=ierr) ahalo ! Root expansion factor
   read(arg_zmax, *, IOSTAT=ierr) zmax ! Higest redshift in tree
-  
+
+  ! Can override parmeterfile nlev on the commandline
   if (found_nlev) then
     read(arg_nlev, *, IOSTAT=ierr) nlev ! Higest redshift in tree
   else
@@ -111,8 +112,11 @@ program tree
   ! Specify output/storage times of the merger tree
   do ilev=1,nlev  !tree levels uniform between z=0 and zmax
     alev(ilev) = 1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
-    write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0, &
-      & 'at which deltcrit=', deltcrit(alev(ilev))
+
+    if (found_switch_verbose) then
+      write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0, &
+        & 'at which deltcrit=', deltcrit(alev(ilev))
+    end if
   end do
 
   ! Set up HDF5 output file
@@ -160,9 +164,6 @@ program tree
       iter=iter+1
     end do build_tree
 
-    !    You might want to insert your own code here and pass it the
-    !    tree.
-
     ! Write the tree to output
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
@@ -173,18 +174,22 @@ program tree
     
     ! Record number of halos for trees table
     trees_nhalos(itree) = nhalo
-    
+
+    !   You might want to insert your own code here and pass it the
+    !   tree.
+
     !   Write out the information for the first couple of
     !   halos in the tree
-    !write(0,*) 'Example information from the tree:'
-    !This_Node => MergerTree(1)
-    !write(0,*) 'Base node:'
-    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
-    !This_Node => This_node%child !move to first progenitor
-    !write(0,*) 'First progenitor:'
-    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
-    !This_Node => This_node%sibling !move to 2nd progenitor
-    !write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    
+    ! write(0,*) 'Example information from the tree:'
+    ! This_Node => MergerTree(1)
+    ! write(0,*) 'Base node:'
+    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
+    ! This_Node => This_node%child !move to first progenitor
+    ! write(0,*) 'First progenitor:'
+    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
+    ! This_Node => This_node%sibling !move to 2nd progenitor
+    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
 
   end do generate_trees
 

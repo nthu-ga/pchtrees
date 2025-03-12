@@ -291,7 +291,6 @@ contains
     type is (character(len=*))
       call h5tcopy_f(H5T_NATIVE_CHARACTER, dtype_id, hdferr)
       call h5tset_size_f(dtype_id, len(attr_value), hdferr)
-
       call h5acreate_f(group_id, attr_name, dtype_id, space_id, attr_id, hdferr)
       call h5awrite_f(attr_id, dtype_id, attr_value, attr_dims, hdferr)
      class default

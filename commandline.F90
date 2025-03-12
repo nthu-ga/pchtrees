@@ -15,6 +15,7 @@ module Commandline
   logical :: found_zmax    = .false.
   logical :: found_nlev    = .false.
   logical :: found_switch_defaults = .false.
+  logical :: found_switch_verbose  = .false.
 
 contains 
 
@@ -38,6 +39,13 @@ contains
           if (.not.found_switch_defaults) then
             write(*,*) 'Keyword argument: defaults'
             found_switch_defaults = .true.
+            i = i + 1
+          end if
+        case ('--verbose')
+          ! Print more output
+          if (.not.found_switch_verbose) then
+            write(*,*) 'Keyword argument: verbose'
+            found_switch_verbose = .true.
             i = i + 1
           end if
         case ('--params')
