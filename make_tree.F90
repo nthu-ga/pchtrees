@@ -436,6 +436,8 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
      ! Store info for reduced tree, if w=wlev and nprog>0 from latest split
      ! If nprog=1, store inf for that fragment
      ! If nprog=2, store inf for both
+
+     ! FIXME APC: REAL equality test!
      if(w.eq.wlev(ilev).and.nprog.gt.0) then          
         if((ifrag+2).gt.nfragmax) then ! Up to 2 more fragments.
            ierr=1 ! Signals failure of routine to calling program.

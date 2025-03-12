@@ -124,8 +124,7 @@ contains
     integer :: i
 
     ! Write expansion factors at each output time
-    call write_1d_array_real(filename, '/OutputTimes/ExpansionFactor', alev, &
-      & overwrite=.false.)
+    call write_1d_array_real(filename, '/OutputTimes/ExpansionFactor', alev)
 
     allocate(output_time_property(size(alev)))
 
@@ -133,15 +132,13 @@ contains
     do i=1,size(alev)
       output_time_property = deltcrit(alev(i))
     end do
-    call write_1d_array_real(filename, '/OutputTimes/DeltaCrit', output_time_property, &
-      & overwrite=.false.)
+    call write_1d_array_real(filename, '/OutputTimes/DeltaCrit', output_time_property)
 
     ! Write redshifts
     do i=1,size(alev)
       output_time_property = (1.0/alev(i))-1.0
     end do
-    call write_1d_array_real(filename, '/OutputTimes/Redshift', output_time_property, &
-      & overwrite=.false.)
+    call write_1d_array_real(filename, '/OutputTimes/Redshift', output_time_property)
 
     deallocate(output_time_property)
 
@@ -157,8 +154,7 @@ contains
     integer, allocatable :: tree_property(:)
     integer :: i
 
-    call write_1d_array_integer(filename, '/TreeTable/Length', tree_lengths, &
-      & overwrite=.false.)
+    call write_1d_array_integer(filename, '/TreeTable/Length', tree_lengths)
 
     allocate(tree_property(size(tree_lengths)))
 
@@ -167,15 +163,13 @@ contains
     do i=2,size(tree_lengths)
       tree_property(i) = tree_lengths(i-1)
     end do
-    call write_1d_array_integer(filename, '/TreeTable/StartOffset', tree_property, &
-      & overwrite=.false.)
+    call write_1d_array_integer(filename, '/TreeTable/StartOffset', tree_property)
 
     ! Create tree ids
     do i=1,size(tree_lengths)
       tree_property(i) = i - 1 ! O-based 
     end do
-    call write_1d_array_integer(filename, '/TreeTable/TreeID', tree_property, &
-      & overwrite=.false.)
+    call write_1d_array_integer(filename, '/TreeTable/TreeID', tree_property)
 
     deallocate(tree_property)
 
@@ -608,17 +602,15 @@ contains
   end subroutine append_to_dataset
 
   ! ############################################################
-  subroutine write_1d_array_integer(filename, dataset_path, data, overwrite)
+  subroutine write_1d_array_integer(filename, dataset_path, data)
     implicit none
     character(len=*), intent(in) :: filename       ! File name
     character(len=*), intent(in) :: dataset_path   ! Full HDF5 dataset path
     integer, dimension(:), intent(in) :: data      ! 1D array data
-    logical, intent(in), optional :: overwrite     ! Whether to overwrite existing dataset
    
     integer(hid_t) :: file_id, dset_id, dspace_id, plist_id
     integer(hsize_t), dimension(1) :: dims
     integer :: hdferr
-    logical :: file_exists, dataset_exists
     
     ! Open file for reading
     call open_existing_file(filename, file_id, 'write_1d_array')
@@ -646,17 +638,15 @@ contains
   end subroutine write_1d_array_integer
 
   ! ############################################################
-  subroutine write_1d_array_real(filename, dataset_path, data, overwrite)
+  subroutine write_1d_array_real(filename, dataset_path, data)
     implicit none
     character(len=*), intent(in) :: filename       ! File name
     character(len=*), intent(in) :: dataset_path   ! Full HDF5 dataset path
     real, dimension(:), intent(in) :: data         ! 1D array
-    logical, intent(in), optional :: overwrite     ! Whether to overwrite existing dataset
    
     integer(hid_t) :: file_id, dset_id, dspace_id, plist_id
     integer(hsize_t), dimension(1) :: dims
     integer :: hdferr
-    logical :: file_exists, dataset_exists
     
     ! Open file for reading
     call open_existing_file(filename, file_id, 'write_1d_array')
