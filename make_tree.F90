@@ -274,8 +274,9 @@ subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragt
   integer alloc_err,ichild(nfragmax),ierr,ifrag,ifragc,ifraglev(nlev),ifrag_prev,ilev,ilevwk,indxch(NCHMAX),inode,inodemax&
        &,ipar(nfragmax),ipar_prev,iseed,isib(nfragmax),iw,jchild1,jfrag,jfragc,jfragp,jindex(nfragmax),child_ref(nfragmax)&
        &,jpfrag(nlev),kchild,kfrag,kfragp,MAXNODES,nch,nchild1,nfraglev(nlev)&
-       &,nfragtot,nprog
-  !
+       &,nprog
+  
+  integer, intent(out) :: nfragtot
   ! Floats
   real a0,alev(nlev),dw,dwmax,m,m0,mbytes,mmin,mprog(2),mtr(nfragmax),w,wfin,wlev(nlev)
   !

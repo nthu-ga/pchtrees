@@ -129,6 +129,7 @@ contains
         case default
           write(*,*) "Unknown command line argument!"
           write(*,*) trim(argval)
+          stop
         end select
 
       else

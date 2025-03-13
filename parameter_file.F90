@@ -11,11 +11,13 @@ module Parameter_File
 
     ! Initial random seed
     integer :: iseed = -8635
+    ! Maximum trees per file
+    integer :: max_trees_per_file = 1000
   end type Parameters_Runtime
   type(Parameters_Runtime) :: pa_runtime
 
   type Parameters_Output
-    character(len=:), allocatable :: file_path
+    character(len=:), allocatable :: file_base
     ! Number of levels in the tree
     integer :: nlev = 10
     ! Mass resolution
@@ -52,7 +54,6 @@ module Parameter_File
 
     ! Power spectrum amplitude set regardless of other parameters
     real :: sigma8  = 0.9  
-
 
     ! Computed at runtime
     ! Omega_m x h ignoring effect of baryons
@@ -130,9 +131,7 @@ contains
     runtime_parameters: if (associated(child)) then
       call get_value(child, 'data_path', pa_runtime%data_path, './')
       call get_value(child, 'iseed',     pa_runtime%iseed, -8365)
-
-      print '(2a)', 'Data path: ', pa_runtime%data_path
-      print '(a,i10)', 'Random seeds: ', pa_runtime%iseed
+      call get_value(child, 'max_trees_per_file',  pa_runtime%max_trees_per_file, 1000)
     end if runtime_parameters
     
     if (dump_parameters) then
@@ -140,12 +139,13 @@ contains
       write(*,*) '[runtime]'
       call print_kv('data_path', './')
       call print_kv('iseed', pa_runtime%iseed)
+      call print_kv('max_trees_per_file', pa_runtime%max_trees_per_file)
     end if
 
     ! Get [output] section.
     call get_value(table, 'output', child, requested=.false.)
     output_parameters: if (associated(child)) then
-      call get_value(child, 'file_path', pa_output%file_path, './output_tree.hdf5')
+      call get_value(child, 'file_base', pa_output%file_base, './output_tree')
       call get_value(child, 'nlev', pa_output%nlev, 10)
       call get_value(child, 'mres', pa_output%mres, 1.0e+8)
     end if output_parameters
@@ -153,7 +153,7 @@ contains
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[output]'
-      call print_kv('file_path', './output_tree.hdf5')
+      call print_kv('file_base', './output_tree')
       call print_kv('nlev', pa_output%nlev)
       call print_kv('mres', pa_output%mres)
     end if

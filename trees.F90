@@ -40,6 +40,14 @@ program tree
   ! Trees table
   integer, allocatable :: trees_nhalos(:)
 
+  ! Start a new output file every N trees
+  integer :: ifile
+  integer :: nfiles
+  integer :: first_tree_in_file
+  integer, allocatable :: ntrees_per_file(:)
+  integer, allocatable :: nhalos_per_file(:)
+  character(len=1024)  :: file_path
+  
   ! HDF5 output
   integer(hsize_t) :: N_min, N_max
   integer :: hdferr
@@ -124,17 +132,27 @@ program tree
   N_min = 100
   N_max = 1000
   call h5open_f(hdferr)
-  call create_hdf5_output(pa_output%file_path, N_min, N_max) 
 
   ! Allocate tree workspace
-  allocate(trees_nhalos(ntrees))
-  allocate(nhalolev(nlev))
-  allocate(jphalo(nlev))
+  allocate(trees_nhalos(ntrees), source=0)
+  allocate(nhalolev(nlev),       source=0)
+  allocate(jphalo(nlev),         source=0)
 
   ierr     = 1 ! initial error status us to control make_tree()
   nhalomax = 0 ! initialise
   nhalo    = 0
   
+  nfiles = ceiling(real(ntrees) / real(pa_runtime%max_trees_per_file))
+  allocate(ntrees_per_file(nfiles), source=0)
+  allocate(nhalos_per_file(nfiles), source=0)
+  
+  ! Set up first output file
+  ifile = 1
+  first_tree_in_file = 1
+  write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
+  write(*,*) trim(file_path)
+  call create_hdf5_output(file_path, N_min, N_max) 
+
   ! Start generating trees
   generate_trees: do itree=1,ntrees
     iter = 1   
@@ -154,7 +172,7 @@ program tree
       do j=1, nhalomax, 1
         MergerTree_Aux(j)%index = j
       end do
-      MergerTree => MergerTree_Aux  !Maps MergerTree to allocated 
+      MergerTree => MergerTree_Aux  ! Maps MergerTree to allocated 
 
       ! Build the tree
       call make_tree(mphalo,ahalo,pa_output%mres,alev,nlev,&
@@ -164,16 +182,41 @@ program tree
       iter=iter+1
     end do build_tree
 
-    ! Write the tree to output
+    ! Write the tree to active output file
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
-    call write_tree_hdf5(pa_output%file_path, itree-1, This_Node, &
+    call write_tree_hdf5(file_path, itree-1, This_Node, &
       & nhalo, nlev)
-    
-    write(0,*) 'Made tree',itree, nhalo, This_Node%mhalo
-    
+
+    write(0,*) 'Wrote tree',itree, nhalo, This_Node%mhalo
+    ntrees_per_file(ifile) = ntrees_per_file(ifile) + 1
+
     ! Record number of halos for trees table
     trees_nhalos(itree) = nhalo
+    nhalos_per_file(ifile) = nhalos_per_file(ifile) + nhalo
+
+    ! Close and refresh output file if needed
+    if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
+      write(*,*) "Writing trees", first_tree_in_file, itree
+
+      ! Write the aexp list
+      call write_output_times(file_path, alev)
+     
+      ! Write the trees table
+      call write_tree_table(file_path, trees_nhalos(first_tree_in_file:itree))
+
+      ! Write parameters
+      call write_parameters(file_path)
+      
+      ! Set up the next file
+      if (itree.lt.ntrees) then
+        ifile = ifile + 1
+        first_tree_in_file = itree + 1
+        write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
+        write(*,*) trim(file_path)
+        call create_hdf5_output(file_path, N_min, N_max) 
+      end if
+    end if 
 
     !   You might want to insert your own code here and pass it the
     !   tree.
@@ -193,20 +236,31 @@ program tree
 
   end do generate_trees
 
+  ! The number of files we have written
+  if (.not.(ifile.eq.nfiles)) then
+    write(*,*) 'FATAL: mismatch in expected number of files written'
+    stop
+  end if
+
   ! Write the trees table
-  call write_tree_table(pa_output%file_path, trees_nhalos)
+  ! all write_tree_table(pa_output%file_path, trees_nhalos)
+  
+  ! Loop over each output file and write the header, which needs information
+  ! about all the files.
 
-  ! Write the aexp list
-  call write_output_times(pa_output%file_path, alev)
+  write(*,*) 'Writing output file headers...'
+  do ifile=1,nfiles
+    write(file_path, '(A, A, I3.3, A)') pa_output%file_base, '.', ifile, ".hdf5"
+    write(*,*) trim(file_path)
 
-  ! Write the header
-  ! Currently only support single file output
-  call write_header(pa_output%file_path, '/Header', nlev-1, & 
-    & sum(trees_nhalos), sum(trees_nhalos), ntrees, ntrees, 1)
- 
-  ! Write parameters
-  call write_parameters(pa_output%file_path)
+    ! Write the header
+    call write_header(file_path, '/Header', nlev-1, & 
+      & nhalos_per_file(ifile), sum(trees_nhalos), &
+      & ntrees_per_file(ifile), ntrees, nfiles)
+  end do
 
+  deallocate(nhalos_per_file)
+  deallocate(ntrees_per_file)
   deallocate(trees_nhalos)
   deallocate(wlev,alev,ifraglev)
   deallocate(nhalolev)

@@ -50,7 +50,7 @@ contains
     ! Open file
     inquire(file=trim(filename), exist=file_exists)
     if (file_exists) then
-      write(*,*) 'Remove existing output file: ', filename
+      write(*,*) 'Remove existing output file: ', trim(filename)
       stop
     endif 
     call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
