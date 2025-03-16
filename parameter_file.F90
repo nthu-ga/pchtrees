@@ -88,9 +88,10 @@ contains
 
   subroutine parse_parameter_file(file_name, dump_parameters_unit)
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
-    use :: tomlf
+    ! use :: tomlf
+    use TinyTOML
     implicit none
-    
+ 
     character(len=*), intent(in) :: file_name
     integer, intent(in), optional :: dump_parameters_unit
     
@@ -99,8 +100,9 @@ contains
 
     integer                       :: fu, rc
     logical                       :: file_exists
-    type(toml_table), allocatable :: table
-    type(toml_table), pointer     :: child
+
+    type(toml_object) :: toml_content
+    type(toml_object) :: section
 
     dump_parameters = present(dump_parameters_unit)
     dpu = merge(dump_parameters_unit, 6, dump_parameters)
@@ -111,62 +113,43 @@ contains
       stop
     end if
 
-    open(action='read', file=file_name, iostat=rc, newunit=fu)
-
-    if (rc /= 0) then
-      write (stderr, '("Error: Reading TOML file ", a, " failed")') file_name
-      stop
-    end if
-
-    call toml_parse(table, fu)
-    close(fu)
-
-    if (.not. allocated(table)) then
-      write (stderr, '("Error: Parsing failed (allocating table)")')
-      stop
-    end if
+    toml_content = parse_file(file_name)
 
     ! Get [runtime] section.
-    call get_value(table, 'runtime', child, requested=.false.)
-    runtime_parameters: if (associated(child)) then
-      call get_value(child, 'data_path', pa_runtime%data_path, './')
-      call get_value(child, 'iseed',     pa_runtime%iseed, -8365)
-      call get_value(child, 'max_trees_per_file',  pa_runtime%max_trees_per_file, 1000)
-    end if runtime_parameters
-    
+    section = toml_content%get("runtime")
+    call read_value(section%get("data_path",          error=.false.), pa_runtime%data_path, default='./')
+    call read_value(section%get("iseed",              error=.false.), pa_runtime%iseed, default=-8365)
+    call read_value(section%get("max_trees_per_file", error=.false.), pa_runtime%max_trees_per_file, default=1000)
+
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[runtime]'
-      call print_kv('data_path', './')
+      call print_kv('data_path', pa_runtime%data_path)
       call print_kv('iseed', pa_runtime%iseed)
       call print_kv('max_trees_per_file', pa_runtime%max_trees_per_file)
     end if
 
     ! Get [output] section.
-    call get_value(table, 'output', child, requested=.false.)
-    output_parameters: if (associated(child)) then
-      call get_value(child, 'file_base', pa_output%file_base, './output_tree')
-      call get_value(child, 'nlev', pa_output%nlev, 10)
-      call get_value(child, 'mres', pa_output%mres, 1.0e+8)
-    end if output_parameters
+    section = toml_content%get("output")
+    call read_value(section%get('file_base', error=.false.), pa_output%file_base, default='./output_tree')
+    call read_value(section%get('nlev', error=.false.), pa_output%nlev, default=10)
+    call read_value(section%get('mres', error=.false.), pa_output%mres, default=1.0e+8)
 
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[output]'
-      call print_kv('file_base', './output_tree')
+      call print_kv('file_base', pa_output%file_base)
       call print_kv('nlev', pa_output%nlev)
       call print_kv('mres', pa_output%mres)
     end if
 
     ! Get [cosmology] section
-    call get_value(table, 'cosmology', child, requested=.false.)
-    cosmo_parameters: if (associated(child)) then
-      call get_value(child, 'omega0',  pa_cosmo%omega0)
-      call get_value(child, 'lambda0', pa_cosmo%lambda0)
-      call get_value(child, 'h0',      pa_cosmo%h0)
-      call get_value(child, 'omegab',  pa_cosmo%omegab)
-      call get_value(child, 'cmb_T0',  pa_cosmo%CMB_T0) 
-    end if cosmo_parameters
+    section = toml_content%get("cosmology")
+    call read_value(section%get('omega0',  error=.false.),  pa_cosmo%omega0)
+    call read_value(section%get('lambda0', error=.false.), pa_cosmo%lambda0)
+    call read_value(section%get('h0',      error=.false.),      pa_cosmo%h0)
+    call read_value(section%get('omegab',  error=.false.),  pa_cosmo%omegab)
+    call read_value(section%get('cmb_T0',  error=.false.),  pa_cosmo%CMB_T0) 
 
     if (dump_parameters) then
       write(*,*)
@@ -179,16 +162,13 @@ contains
     end if
 
     ! Get [powerspec] section
-    call get_value(table, 'powerspec', child, requested=.false.)
-    powerspec_parameters: if (associated(child)) then
-      call get_value(child, 'pkinfile', pa_powerspec%pkinfile, 'pk_Mill.dat')
-    
-      call get_value(child, 'itrans', pa_powerspec%itrans)
-      call get_value(child, 'nspec',  pa_powerspec%nspec)
-      call get_value(child, 'dndlnk', pa_powerspec%dndlnk)
-      call get_value(child, 'kref',   pa_powerspec%kref)
-      call get_value(child, 'sigma8', pa_powerspec%sigma8) 
-    end if powerspec_parameters
+    section = toml_content%get("powerspec")
+    call read_value(section%get('itrans', error=.false.),   pa_powerspec%itrans)
+    call read_value(section%get('pkinfile', error=.false.), pa_powerspec%pkinfile, default='pk_Mill.dat')
+    call read_value(section%get('nspec', error=.false.),    pa_powerspec%nspec)
+    call read_value(section%get('dndlnk', error=.false.),   pa_powerspec%dndlnk)
+    call read_value(section%get('kref', error=.false.),     pa_powerspec%kref)
+    call read_value(section%get('sigma8', error=.false.),   pa_powerspec%sigma8) 
 
     ! Compute powerspec gamma
     pa_powerspec%gamma = pa_cosmo%omega0*pa_cosmo%h0 
@@ -205,14 +185,12 @@ contains
     end if 
 
     ! Get [tree] section.
-    call get_value(table, 'tree', child, requested=.false.)
-    tree_parameters: if (associated(child)) then
-      call get_value(child, 'G0',      pa_tree%G0,       0.57)
-      call get_value(child, 'gamma_1', pa_tree%gamma_1,  0.38)
-      call get_value(child, 'gamma_2', pa_tree%gamma_2, -0.01)
-      call get_value(child, 'eps1',    pa_tree%eps1,     0.1)
-      call get_value(child, 'eps2',    pa_tree%eps2,     0.1)
-    end if tree_parameters
+    section = toml_content%get("tree")
+    call read_value(section%get('G0', error=.false.),      pa_tree%G0,     default= 0.57)
+    call read_value(section%get('gamma_1', error=.false.), pa_tree%gamma_1,default= 0.38)
+    call read_value(section%get('gamma_2', error=.false.), pa_tree%gamma_2,default=-0.01)
+    call read_value(section%get('eps1', error=.false.),    pa_tree%eps1,   default= 0.1)
+    call read_value(section%get('eps2', error=.false.),    pa_tree%eps2,   default= 0.1)
 
     if (dump_parameters) then
       write(*,*)
