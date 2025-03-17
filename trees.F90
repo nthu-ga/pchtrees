@@ -112,7 +112,8 @@ program tree
   iseed0 = pa_runtime%iseed
 
   ! Set up the array of redshifts at which the tree is to be stored
-  write(0,*) 'The redshifts at which the tree will be stored:'
+  write(*,*) 
+  write(*,*) 'The redshifts at which the tree will be stored:'
   allocate(wlev(nlev))
   allocate(alev(nlev))
   allocate(ifraglev(nlev))
@@ -120,7 +121,6 @@ program tree
   ! Specify output/storage times of the merger tree
   do ilev=1,nlev  !tree levels uniform between z=0 and zmax
     alev(ilev) = 1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
-
     if (found_switch_verbose) then
       write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0, &
         & 'at which deltcrit=', deltcrit(alev(ilev))
@@ -128,10 +128,7 @@ program tree
   end do
 
   ! Set up HDF5 output file
-  ! FIXME estimate these numbers better
-  N_min = 100
-  N_max = 1000
-  call h5open_f(hdferr)
+    call h5open_f(hdferr)
 
   ! Allocate tree workspace
   allocate(trees_nhalos(ntrees), source=0)
@@ -151,6 +148,10 @@ program tree
   first_tree_in_file = 1
   write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
   write(*,*) trim(file_path)
+
+  ! FIXME estimate these numbers better
+  N_min = 100
+  N_max = 1000
   call create_hdf5_output(file_path, N_min, N_max) 
 
   ! Start generating trees
