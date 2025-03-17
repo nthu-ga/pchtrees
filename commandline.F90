@@ -27,6 +27,9 @@ contains
 
     nargs = command_argument_count()
     write(*,*) 'Have', nargs, 'arguments'
+
+    if (nargs.eq.0) call usage()
+  
     i = 1
     loop_over_args: do while (i.le.nargs)
       call get_command_argument(i,argval)
@@ -167,11 +170,10 @@ contains
       end if is_keyword_arg
     end do loop_over_args
 
-    ! Check for valid parameters
-
+    ! Check for valid parameters 
     if (.not.found_ntrees) then
-      write(*,*) "Missing number of trees to generate!"
-      stop
+      write(*,*) "Missing number of trees to generate, using default (1)"
+      arg_ntrees = "1"
     endif
 
     if (.not.found_mphalo) then
@@ -188,22 +190,22 @@ contains
       write(*,*) "Missing highest redshift in tree, using default (4.0)"
       arg_zmax = "4.0" 
     endif
-
   end subroutine read_command_line_args
 
   subroutine usage()
     implicit none
 
     write(*,*) 
-    write(*,*) 'Usage: ./pchtrees parameter_file_path ntrees [options]'
+    write(*,*) 'Usage: ./pchtrees parameter_file_path ntrees mphalo ahalo zmax [options]'
     write(*,*) 
-    write(*,*) 'Options (positional or by keyword)' 
+    write(*,*) 'Options (positional or by keyword):' 
     write(*,*) 'path   (--path  ) : path to parameter file in TOML format'
-    write(*,*) 'ntrees (--ntrees) : integer number of trees to generate'
-    write(*,*) 'mphalo (--mphalo) : target mass of tree root notes (Msol)'
-    write(*,*) 'zmax   (--zmax)   : highest redshift in tree' 
+    write(*,*) 'ntrees (--ntrees) : integer number of trees to generate (1)'
+    write(*,*) 'mphalo (--mphalo) : target mass of tree root notes (1e12 Msol)'
+    write(*,*) 'ahalo  (-ahalo)   : Expansion factor at root of tree (1.0)'
+    write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)' 
     write(*,*) 
-    write(*,*) 'Options (keyword only)'
+    write(*,*) 'Options (keyword only):'
     write(*,*) '--nlev : number of levels in tree'
     write(*,*) 
 
