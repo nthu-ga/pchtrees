@@ -6,34 +6,60 @@ module Parameter_File
   integer, parameter :: UNIT_STDOUT = 6
   private :: UNIT_STDOUT
 
+  ! Default parameters 
+
+  integer, parameter :: PA_RUNTIME_ISEED_DEF = -8635
+  integer, parameter :: PA_RUNTIME_MAX_TREES_PER_FILE_DEF = 1000
+
+  integer, parameter :: PA_OUTPUT_NLEV_DEF = 10
+  real,    parameter :: PA_OUTPUT_MRES_DEF = 1.0e+08
+
+  real,    parameter :: PA_COSMOLOGY_OMEGA0_DEF  = 0.25
+  real,    parameter :: PA_COSMOLOGY_LAMBDA0_DEF = 0.75
+  real,    parameter :: PA_COSMOLOGY_H0_DEF      = 0.73
+  real,    parameter :: PA_COSMOLOGY_OMEGAB_DEF  = 0.04
+  real,    parameter :: PA_COSMOLOGY_CMB_T0_DEF  = 2.73  ! K
+
+  integer, parameter :: PA_POWERSPEC_ITRANS_DEF = 1
+  real,    parameter :: PA_POWERSPEC_NSPEC_DEF  = 1.0
+  real,    parameter :: PA_POWERSPEC_DNDLNK_DEF = 0.0
+  real,    parameter :: PA_POWERSPEC_KREF_DEF   = 1.0
+  real,    parameter :: PA_POWERSPEC_SIGMA8_DEF = 0.9  
+
+  real,    parameter :: PA_TREE_G0_DEF      = 0.57
+  real,    parameter :: PA_TREE_GAMMA_1_DEF = 0.38
+  real,    parameter :: PA_TREE_GAMMA_2_DEF = -0.01
+  real,    parameter :: PA_TREE_EPS1_DEF    = 0.1
+  real,    parameter :: PA_TREE_EPS2_DEF    = 0.1
+
+  ! Classes and global isntances for the parameter file sections
+
   type Parameters_Runtime
     character(len=:), allocatable :: data_path
-
     ! Initial random seed
-    integer :: iseed = -8635
+    integer :: iseed = PA_RUNTIME_ISEED_DEF
     ! Maximum trees per file
-    integer :: max_trees_per_file = 1000
+    integer :: max_trees_per_file = PA_RUNTIME_MAX_TREES_PER_FILE_DEF
   end type Parameters_Runtime
   type(Parameters_Runtime) :: pa_runtime
 
   type Parameters_Output
     character(len=:), allocatable :: file_base
     ! Number of levels in the tree
-    integer :: nlev = 10
+    integer :: nlev = PA_OUTPUT_NLEV_DEF 
     ! Mass resolution
-    real    :: mres = 1.0e+08
+    real    :: mres = PA_OUTPUT_MRES_DEF
   end type Parameters_Output
   type(Parameters_Output) :: pa_output
  
   type Parameters_Cosmology
-    real :: omega0  = 0.25
-    real :: lambda0 = 0.75
-    real :: h0      = 0.73
-    real :: omegab  = 0.04
+    real :: omega0  = PA_COSMOLOGY_OMEGA0_DEF
+    real :: lambda0 = PA_COSMOLOGY_LAMBDA0_DEF
+    real :: h0      = PA_COSMOLOGY_H0_DEF
+    real :: omegab  = PA_COSMOLOGY_OMEGAB_DEF
 
     ! For Eisenstein and Hu CDM transfer function one must specify the CMB temperature
-    real :: CMB_T0  = 2.73  ! K
-    
+    real :: CMB_T0  = PA_COSMOLOGY_CMB_T0_DEF  ! K
   end type Parameters_Cosmology
   type(Parameters_Cosmology) :: pa_cosmo
 
@@ -42,18 +68,18 @@ module Parameter_File
     ! itrans=1   !indicates use BBKS CDM transfer function with specified Gamma and Omega0
     ! itrans=2   !indicates use Bond & Efstathiou CDM transfer function with specified Gamma and Omega0
     ! itrans=3   !indicates use Eisenstein and Hu CDM transfer function with specified Omega0, Omegab and h0
-    integer :: itrans = 1
+    integer :: itrans = PA_POWERSPEC_ITRANS_DEF
 
     !Tabulated Millennium Simulation linear P(k)
     character(len=:), allocatable :: pkinfile 
 
     ! Primordial P(k) parameters (ignored if itrans=-1)
-    real :: nspec  = 1.0
-    real :: dndlnk = 0.0
-    real :: kref   = 1.0
+    real :: nspec  = PA_POWERSPEC_NSPEC_DEF
+    real :: dndlnk = PA_POWERSPEC_DNDLNK_DEF
+    real :: kref   = PA_POWERSPEC_KREF_DEF
 
     ! Power spectrum amplitude set regardless of other parameters
-    real :: sigma8  = 0.9  
+    real :: sigma8 = PA_POWERSPEC_SIGMA8_DEF
 
     ! Computed at runtime
     ! Omega_m x h ignoring effect of baryons
@@ -86,40 +112,80 @@ module Parameter_File
 
 contains
 
-  subroutine parse_parameter_file(file_name, dump_parameters_unit)
+  subroutine parse_parameter_file(file_name_in, dump_parameters_unit)
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
     ! use :: tomlf
     use TinyTOML
     implicit none
  
-    character(len=*), intent(in) :: file_name
+    character(len=*), intent(in) :: file_name_in
+    character(len=100) :: file_name
     integer, intent(in), optional :: dump_parameters_unit
     
     logical :: dump_parameters
     integer :: dpu
 
-    integer                       :: fu, rc
-    logical                       :: file_exists
+    ! integer :: fu, rc
+    logical :: file_exists, dump_only=.false.
 
     type(toml_object) :: toml_content
     type(toml_object) :: section
 
+    character(len=100) :: temp_filename
+    integer :: temp_unit
+    integer :: io_err
+
     dump_parameters = present(dump_parameters_unit)
     dpu = merge(dump_parameters_unit, 6, dump_parameters)
 
-    inquire (file=file_name, exist=file_exists)
+    inquire (file=file_name_in, exist=file_exists)
     if (.not. file_exists) then
-      write (stderr, '("Error: Parameter file ", a, " not found")') file_name
-      stop
+      if (dump_parameters) then
+        if (dump_parameters_unit.eq.6) then
+          dump_only = .true.
+        endif
+      else
+        write (stderr, '("Error: Parameter file ", a, "not found")') file_name_in
+        stop
+      endif
     end if
 
+    ! An ugly hack to write a dummy pf
+    if (dump_only) then
+      ! Generate a unique temporary file name
+      temp_filename = 'tmpfile.dat'
+      open(newunit=temp_unit, file=temp_filename, status='new', action='readwrite')
+      write(temp_unit, '(A)') '[runtime]' 
+      write(temp_unit, '(A)') '[output]' 
+      write(temp_unit, '(A)') '[cosmology]' 
+      write(temp_unit, '(A)') '[powerspec]' 
+      write(temp_unit, '(A)') '[tree]' 
+      file_name = trim(temp_filename)
+      close(temp_unit)
+
+      write(dpu,*)
+      write(dpu,*) '# This is an example pchtrees paramter file.'
+      write(dpu,*) '# Some of the options will need to be supplied by you,'
+      write(dpu,*) '# e.g. data_path, file_base.'
+    else
+      file_name = trim(file_name_in)
+    endif
+
+    ! Parse the TOML file
     toml_content = parse_file(file_name)
+
+    if (dump_only) then
+      io_err = unlink(temp_filename)
+    endif
 
     ! Get [runtime] section.
     section = toml_content%get("runtime")
-    call read_value(section%get("data_path",          error=.false.), pa_runtime%data_path, default='./')
-    call read_value(section%get("iseed",              error=.false.), pa_runtime%iseed, default=-8365)
-    call read_value(section%get("max_trees_per_file", error=.false.), pa_runtime%max_trees_per_file, default=1000)
+    call read_value(section%get("data_path", error=.false.), &
+      & pa_runtime%data_path, default='./')
+    call read_value(section%get("iseed", error=.false.), &
+      & pa_runtime%iseed, default=PA_RUNTIME_ISEED_DEF)
+    call read_value(section%get("max_trees_per_file", error=.false.), &
+      & pa_runtime%max_trees_per_file, default=PA_RUNTIME_MAX_TREES_PER_FILE_DEF)
 
     if (dump_parameters) then
       write(*,*)
@@ -131,9 +197,12 @@ contains
 
     ! Get [output] section.
     section = toml_content%get("output")
-    call read_value(section%get('file_base', error=.false.), pa_output%file_base, default='./output_tree')
-    call read_value(section%get('nlev', error=.false.), pa_output%nlev, default=10)
-    call read_value(section%get('mres', error=.false.), pa_output%mres, default=1.0e+8)
+    call read_value(section%get('file_base', error=.false.), & 
+      & pa_output%file_base, default='./output_tree')
+    call read_value(section%get('nlev', error=.false.), & 
+      & pa_output%nlev, default=PA_OUTPUT_NLEV_DEF)
+    call read_value(section%get('mres', error=.false.), & 
+      & pa_output%mres, default=PA_OUTPUT_MRES_DEF)
 
     if (dump_parameters) then
       write(*,*)
@@ -145,11 +214,16 @@ contains
 
     ! Get [cosmology] section
     section = toml_content%get("cosmology")
-    call read_value(section%get('omega0',  error=.false.),  pa_cosmo%omega0)
-    call read_value(section%get('lambda0', error=.false.), pa_cosmo%lambda0)
-    call read_value(section%get('h0',      error=.false.),      pa_cosmo%h0)
-    call read_value(section%get('omegab',  error=.false.),  pa_cosmo%omegab)
-    call read_value(section%get('cmb_T0',  error=.false.),  pa_cosmo%CMB_T0) 
+    call read_value(section%get('omega0',  error=.false.), &
+      &   pa_cosmo%omega0, default=PA_COSMOLOGY_OMEGA0_DEF)
+    call read_value(section%get('lambda0', error=.false.), &
+      &  pa_cosmo%lambda0, default=PA_COSMOLOGY_LAMBDA0_DEF)
+    call read_value(section%get('h0',      error=.false.), &
+      &   pa_cosmo%h0, default=PA_COSMOLOGY_H0_DEF)
+    call read_value(section%get('omegab',  error=.false.), &
+      &   pa_cosmo%omegab, default=PA_COSMOLOGY_OMEGAB_DEF)
+    call read_value(section%get('cmb_T0',  error=.false.), &
+      &   pa_cosmo%CMB_T0, default=PA_COSMOLOGY_CMB_T0_DEF) 
 
     if (dump_parameters) then
       write(*,*)
@@ -163,12 +237,18 @@ contains
 
     ! Get [powerspec] section
     section = toml_content%get("powerspec")
-    call read_value(section%get('itrans', error=.false.),   pa_powerspec%itrans)
-    call read_value(section%get('pkinfile', error=.false.), pa_powerspec%pkinfile, default='pk_Mill.dat')
-    call read_value(section%get('nspec', error=.false.),    pa_powerspec%nspec)
-    call read_value(section%get('dndlnk', error=.false.),   pa_powerspec%dndlnk)
-    call read_value(section%get('kref', error=.false.),     pa_powerspec%kref)
-    call read_value(section%get('sigma8', error=.false.),   pa_powerspec%sigma8) 
+    call read_value(section%get('itrans', error=.false.),   &
+      & pa_powerspec%itrans, default=PA_POWERSPEC_ITRANS_DEF)
+    call read_value(section%get('pkinfile', error=.false.), &
+      & pa_powerspec%pkinfile, default='pk_Mill.dat')
+    call read_value(section%get('nspec', error=.false.),    &
+      & pa_powerspec%nspec,  default=PA_POWERSPEC_NSPEC_DEF)
+    call read_value(section%get('dndlnk', error=.false.),   &
+      & pa_powerspec%dndlnk, default=PA_POWERSPEC_DNDLNK_DEF)
+    call read_value(section%get('kref', error=.false.),     &
+      & pa_powerspec%kref,   default=PA_POWERSPEC_KREF_DEF)
+    call read_value(section%get('sigma8', error=.false.),   &
+      & pa_powerspec%sigma8, default=PA_POWERSPEC_SIGMA8_DEF) 
 
     ! Compute powerspec gamma
     pa_powerspec%gamma = pa_cosmo%omega0*pa_cosmo%h0 
@@ -186,11 +266,16 @@ contains
 
     ! Get [tree] section.
     section = toml_content%get("tree")
-    call read_value(section%get('G0', error=.false.),      pa_tree%G0,     default= 0.57)
-    call read_value(section%get('gamma_1', error=.false.), pa_tree%gamma_1,default= 0.38)
-    call read_value(section%get('gamma_2', error=.false.), pa_tree%gamma_2,default=-0.01)
-    call read_value(section%get('eps1', error=.false.),    pa_tree%eps1,   default= 0.1)
-    call read_value(section%get('eps2', error=.false.),    pa_tree%eps2,   default= 0.1)
+    call read_value(section%get('G0', error=.false.),     &
+      & pa_tree%G0,     default=PA_TREE_G0_DEF)
+    call read_value(section%get('gamma_1', error=.false.),&
+      & pa_tree%gamma_1,default=PA_TREE_GAMMA_1_DEF)
+    call read_value(section%get('gamma_2', error=.false.),&
+      & pa_tree%gamma_2,default=PA_TREE_GAMMA_2_DEF)
+    call read_value(section%get('eps1', error=.false.),   &
+      & pa_tree%eps1,   default=PA_TREE_EPS1_DEF)
+    call read_value(section%get('eps2', error=.false.),   &
+      & pa_tree%eps2,   default=PA_TREE_EPS2_DEF)
 
     if (dump_parameters) then
       write(*,*)
@@ -201,7 +286,6 @@ contains
       call print_kv('eps1', pa_tree%eps1)
       call print_kv('eps2', pa_tree%eps2)
     end if
-
     write(*,*)
   end subroutine parse_parameter_file
   
