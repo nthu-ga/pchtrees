@@ -155,7 +155,7 @@ contains
           dump_only = .true.
         endif
       else
-        write (stderr, '("Error: Parameter file ", a, "not found")') file_name_in
+        write (stderr, '("Error: Parameter file ", a, " not found")') file_name_in
         stop
       endif
     end if
@@ -191,7 +191,7 @@ contains
     ! Get [runtime] section.
     section = toml_content%get("runtime")
     call read_value(section%get("data_path", error=.false.), &
-      & pa_runtime%data_path, default='./')
+      & pa_runtime%data_path, default='./data')
     call read_value(section%get("iseed", error=.false.), &
       & pa_runtime%iseed, default=PA_RUNTIME_ISEED_DEF)
     call read_value(section%get("max_trees_per_file", error=.false.), &
