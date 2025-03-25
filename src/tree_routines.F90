@@ -4,7 +4,10 @@ module Tree_Routines
   !% A set of subroutines and functions for manipulating and utilizing the merger trees.
   use Defined_Types
   private
-  public :: Walk_Tree,Tree_Get_Hierarchy_Level,Tree_Get_Current_Parent,Node_Galaxy_Active,Walk_Tree_To_Level
+  public :: Walk_Tree,Tree_Get_Hierarchy_Level,Walk_Tree_To_Level
+
+  !% APC: Tree_Get_Current_Parent was declared by PCH, but no such function is
+  !%      included in the code.
 
 contains
 
