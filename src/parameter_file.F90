@@ -32,8 +32,11 @@ module Parameter_File
   real,    parameter :: PA_TREE_EPS1_DEF    = 0.1
   real,    parameter :: PA_TREE_EPS2_DEF    = 0.1
 
-  ! Classes and global isntances for the parameter file sections
+  ! Enum for output format
+  integer, parameter :: OUTPUT_HDF5 = 1
+  integer, parameter :: OUTPUT_JET  = 2
 
+  ! Classes and global isntances for the parameter file sections
   type Parameters_Runtime
     character(len=:), allocatable :: data_path
     ! Initial random seed
@@ -44,11 +47,17 @@ module Parameter_File
   type(Parameters_Runtime) :: pa_runtime
 
   type Parameters_Output
+    ! Type of output
+    integer :: output_format
+    ! Base of file name (e.g. <file_base>.nnn.hdf5)
     character(len=:), allocatable :: file_base
     ! Number of levels in the tree
     integer :: nlev = PA_OUTPUT_NLEV_DEF 
     ! Mass resolution
     real    :: mres = PA_OUTPUT_MRES_DEF
+    ! Output time list
+    character(len=:), allocatable :: aexp_list
+    logical :: have_aexp_list
   end type Parameters_Output
   type(Parameters_Output) :: pa_output
  
@@ -130,6 +139,7 @@ contains
 
     type(toml_object) :: toml_content
     type(toml_object) :: section
+    type(toml_object) :: temp_keyval
 
     character(len=100) :: temp_filename
     integer :: temp_unit
@@ -203,13 +213,51 @@ contains
       & pa_output%nlev, default=PA_OUTPUT_NLEV_DEF)
     call read_value(section%get('mres', error=.false.), & 
       & pa_output%mres, default=PA_OUTPUT_MRES_DEF)
+   
+    ! Output format
+    temp_keyval = section%get('output_format', error=.false.)
+    select case(temp_keyval%value)
+    case ('hdf5')
+      pa_output%output_format = OUTPUT_HDF5
+    case ('jet')
+      pa_output%output_format = OUTPUT_JET
+    case default
+      write(*,*) 'Invalid output format:', temp_keyval%value
+      stop
+    end select
+
+    ! Optional aexp list
+    temp_keyval = section%get('aexp_list', error=.false.)
+    pa_output%have_aexp_list = .false.
+    select case(temp_keyval%error_code)
+    case (KEY_NOT_FOUND)
+      ! No axep list, ok
+      ! Not really needed, but no "pass" in Fortran...
+      pa_output%have_aexp_list = .false.
+    case (SUCCESS)
+      call read_value(temp_keyval, pa_output%aexp_list)
+      ! Only sanity check is that an empty value is
+      ! counted as no value
+      if (len(trim(pa_output%aexp_list)).gt.0) then
+        pa_output%have_aexp_list = .true.
+      else
+        pa_output%have_aexp_list = .false.
+      endif
+    case default
+      write(*,*) 'Bad news!'
+      stop
+    end select
 
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[output]'
+      call print_kv('output_format', pa_output%output_format)
       call print_kv('file_base', pa_output%file_base)
       call print_kv('nlev', pa_output%nlev)
       call print_kv('mres', pa_output%mres)
+      if (pa_output%have_aexp_list) then
+        call print_kv('aexp_list', pa_output%aexp_list)
+      endif
     end if
 
     ! Get [cosmology] section

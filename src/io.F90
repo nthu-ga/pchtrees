@@ -1,5 +1,7 @@
 module IO
+#ifdef WITH_HDF5
   use hdf5
+#endif
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
   use Cosmological_Parameters
@@ -9,6 +11,7 @@ module IO
   use Overdensity
   implicit none
 
+#ifdef WITH_HDF5
   interface write_1d_array
       module procedure write_1d_array_real, write_1d_array_integer
   end interface write_1d_array
@@ -25,12 +28,93 @@ module IO
   character(*), parameter :: DSET_TREE_SNAPNUM = "/TreeHalos/SnapNum"
   character(*), parameter :: DSET_TREE_GROUP_M_CRIT200 = "/TreeHalos/Group_M_Crit200"
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
+#endif
 
 contains
-  
-  ! TODO
-  ! - split into multiple files
-  
+
+  subroutine write_tree_jet(filename, tree_id, Tree_Root, nnodes, nlevels, alev, idx_offset)
+    !
+    ! Writes tree in "JET" text format
+    !
+    character(len=*), intent(IN) :: filename
+    type (TreeNode), pointer, intent(IN) :: Tree_Root
+    integer, intent(IN) :: tree_id, nnodes, nlevels
+    real, dimension(:), intent(in) :: alev
+    integer, intent(IN), optional :: idx_offset
+
+    integer :: i
+    integer :: inode, ibranch
+    integer :: nodes_written_so_far
+    integer :: unit_num, ierr
+
+    ! Treewalk pointers
+    type (TreeNode), pointer :: This_Node
+
+    real :: zred, mass
+    integer :: idx_node, idx_desc, idx_main_prog
+
+    if (present(idx_offset)) then
+      nodes_written_so_far = idx_offset
+    else
+      nodes_written_so_far = 0
+    end if
+
+    ! FIXME might want to pass an open fileid
+
+    ! JET format
+    !column 0 = redshift of the halo 
+    !column 1 = halo mass 
+    !column 2 = halo id (in practice the line number of the file starting from 1)
+    !column 3 = id of the first descendent (at lower redshift) of the halo. -1 if no
+    !descendent
+    !column 4 = id of the most massive progenitor of the halo (at higher redshift),
+    !-1 if the halo is a first leaf (i.e. has no progenitor)
+
+    ! FIXME
+    ! Following the spec, the tree is traversed in depth first order with 
+    ! walk_tree, but *written* in order of the MergerTree array...
+
+    !write(1,*) 1.0/alev(MergerTree(count)%jlevel)-1.0,
+    !        MergerTree(count)%mhalo, MergerTree(count)%index+nodes_written_so_far,&
+    !                  & temp_parent, temp_flag
+
+    ! open file 
+    ! FIXME
+    open(newunit=unit_num, file=filename, status="old", action="append", iostat=ierr)
+
+    This_Node => Tree_Root
+    inode   = 1
+    ibranch = 1
+    do while (associated(This_Node))
+
+      zred     = 1.0/alev(MergerTree(inode)%jlevel)
+      mass     = MergerTree(inode)%mhalo
+      idx_node = MergerTree(inode)%index + nodes_written_so_far
+
+      if (associated(This_Node%parent)) then
+        idx_desc = This_node%parent%index + nodes_written_so_far
+      else
+        idx_desc = -1
+      endif
+
+      if (associated(This_Node%child)) then
+        idx_main_prog = This_Node%child%index + nodes_written_so_far
+      else
+        idx_main_prog = -1
+      end if
+
+      write(unit_num,*) zred, mass, idx_node, idx_desc, idx_main_prog
+
+      inode = inode + 1
+      This_Node => Walk_Tree(This_Node)
+    end do
+
+    close(unit_num)
+
+  end subroutine write_tree_jet
+
+#ifdef WITH_HDF5
+
   ! ############################################################ 
   subroutine create_hdf5_output(filename, N_min, N_max)
     !
@@ -314,7 +398,7 @@ contains
     integer :: i
     integer :: inode, inode_child, ibranch
 
-    ! Treewalk oointers
+    ! Treewalk pointers
     type (TreeNode), pointer :: This_Node, Child_Node    
 
     ! Output arrays (generic)
@@ -732,5 +816,6 @@ contains
       stop
     endif
   end subroutine check_hdf5_err
+#endif
 
 end module io

@@ -25,7 +25,7 @@ program tree
   real,    allocatable :: wlev(:)
   real,    allocatable :: alev(:)
   integer, allocatable :: ifraglev(:)
-  real :: mphalo,ahalo,sigmacdm,zmax
+  real :: mphalo,ahalo,sigmacdm,zmin,zmax
   integer :: ierr,nhalomax,nhalo
   integer :: iter, iseed
   EXTERNAL sigmacdm,split
@@ -40,6 +40,10 @@ program tree
   ! Trees table
   integer, allocatable :: trees_nhalos(:)
 
+  ! File-reading temps
+  integer :: unit_num
+  real    :: temp
+
   ! Start a new output file every N trees
   integer :: ifile
   integer :: nfiles
@@ -47,31 +51,14 @@ program tree
   integer, allocatable :: ntrees_per_file(:)
   integer, allocatable :: nhalos_per_file(:)
   character(len=1024)  :: file_path
-  
+  character(len=5)     :: file_ext
+
   ! HDF5 output
   integer(hsize_t) :: N_min, N_max
   integer :: hdferr
 
-  ! Set variables from command line
+  ! Parse the command line 
   call read_command_line_args()
-
-  read(arg_ntrees, '(I10)', IOSTAT=ierr) ntrees ! Number of trees
-  read(arg_mphalo, *, IOSTAT=ierr) mphalo ! Halo mass at base of tree
-  read(arg_ahalo, *, IOSTAT=ierr) ahalo ! Root expansion factor
-  read(arg_zmax, *, IOSTAT=ierr) zmax ! Higest redshift in tree
-
-  ! Can override parmeterfile nlev on the commandline
-  if (found_nlev) then
-    read(arg_nlev, *, IOSTAT=ierr) nlev ! Higest redshift in tree
-  else
-    nlev = pa_output%nlev
-  endif 
-
-  write(*,'(1x,a,i10)')   'Trees to generate                : ', ntrees
-  write(*,'(1x,a,g10.3)') 'Target halo mass (Msol)          : ', mphalo
-  write(*,'(1x,a,f10.3)') 'Expansion factor at root of tree : ', ahalo
-  write(*,'(1x,a,f10.3)') 'Maximum redshift for tree nodes  : ', zmax
-  write(*,'(1x,a,i10)')   'Tree levels                      : ', nlev
 
   ! Process the parameter file
   if (found_switch_defaults) then
@@ -81,7 +68,55 @@ program tree
   else
     call parse_parameter_file(trim(arg_pf_path))
   end if
- 
+
+  ! Set variables from command line
+  read(arg_ntrees, '(I10)', IOSTAT=ierr) ntrees ! Number of trees
+  read(arg_mphalo, *, IOSTAT=ierr) mphalo ! Halo mass at base of tree
+
+  ! Set invalid defaults
+  nlev  = -1
+  ahalo = -1
+  zmax  = -1
+
+  ! If we have an expansion factor list, we don't care about these
+  ! command line values (although they still get set to the defaults)
+  if (.not.pa_output%have_aexp_list) then
+    ! Note that arg_ahalo and arg_zmax are assigned default values already, so
+    ! no need to check if these arguments were actually specified here.
+    read(arg_ahalo, *, IOSTAT=ierr) ahalo ! Root expansion factor
+    read(arg_zmax, *, IOSTAT=ierr) zmax ! Higest redshift in tree
+  end if
+
+  ! Can override parmeterfile nlev on the commandline
+  if (found_nlev) then
+    read(arg_nlev, *, IOSTAT=ierr) nlev ! Higest redshift in tree
+  else
+    nlev = pa_output%nlev
+  endif 
+
+  ! Set up output file type options
+  if (pa_output%output_format.eq.OUTPUT_HDF5) then
+    file_ext = ".hdf5"
+  elseif (pa_output%output_format.eq.OUTPUT_JET) then
+    file_ext = '.txt'
+  endif  
+
+  write(*,'(1x,a,i10)')   'Trees to generate                : ', ntrees
+  write(*,'(1x,a,g10.3)') 'Target halo mass (Msol)          : ', mphalo
+
+   if (pa_output%have_aexp_list.and.((nlev.gt.0).or.found_ahalo.or.found_zmax)) then 
+     write(*,*)
+     write(*,*) 'Warning: parameter file specifies an expansion factor list but'
+     write(*,*) '         nlev, ahalo and/or zmax were passed on the command'
+     write(*,*) '         line or in the parameter file. The expansion factor'
+     write(*,*) '         list has priority.'
+     write(*,*)
+  else
+    write(*,'(1x,a,f10.3)') 'Expansion factor at root of tree : ', ahalo
+    write(*,'(1x,a,f10.3)') 'Maximum redshift for tree nodes  : ', zmax
+    write(*,'(1x,a,i10)')   'Tree levels                      : ', nlev
+  end if
+  
   ! Set the variables in the cosmological parameters module from the parameter
   ! file values.
 
@@ -112,23 +147,85 @@ program tree
   iseed0 = pa_runtime%iseed
 
   ! Set up the array of redshifts at which the tree is to be stored
-  write(*,*) 
-  write(*,*) 'The redshifts at which the tree will be stored:'
-  allocate(wlev(nlev))
-  allocate(alev(nlev))
-  allocate(ifraglev(nlev))
+  if (pa_output%have_aexp_list) then
+    write(*,*)
+    write(*,*) "Using expansion factor list: ", trim(pa_output%aexp_list)
 
-  ! Specify output/storage times of the merger tree
-  do ilev=1,nlev  !tree levels uniform between z=0 and zmax
-    alev(ilev) = 1.0/(1.0+zmax*real(ilev-1)/real(nlev-1))
-    if (found_switch_verbose) then
-      write(0,'(a2,1x,f6.3,1x,a,f6.3)')'z=',(1/alev(ilev)) -1.0, &
-        & 'at which deltcrit=', deltcrit(alev(ilev))
+    ! First pass: Count the number of lines
+    nlev = 0
+    open(newunit=unit_num, file=pa_output%aexp_list, status="old", action="read", iostat=ierr)
+    if (ierr /= 0) then
+        write(*,*) "Error opening expansion factor list!"
+        stop
     end if
-  end do
+
+    do
+        read(unit_num, *, iostat=ierr) temp
+        if (ierr /= 0) exit  ! Exit loop on error (end of file)
+        nlev = nlev + 1
+    end do
+    close(unit_num)
+  end if
+
+  ! Allocate timestep arrays
+  if (nlev > 1) then
+    allocate(wlev(nlev))
+    allocate(alev(nlev))
+    allocate(ifraglev(nlev))
+  else
+    write(*,*) 'Invalid nlev = ', nlev
+    write(*,*) 'Check the expansion factor list!'
+    stop
+  endif 
+
+  if (pa_output%have_aexp_list) then
+    ! Second pass: read expansion factors
+    open(newunit=unit_num, file=pa_output%aexp_list, status="old", action="read", iostat=ierr)
+    do ilev=1,nlev
+        read(unit_num, *) alev(ilev)
+    end do
+    close(unit_num)
+
+    ! Ensure descending order
+    call insertion_sort_desc(alev,nlev)
+  else
+    ! Tree levels uniform between z=0 and zmax
+    ! alev(1) is the latest time (largest aexp)
+
+    ! APC sure there must be a better way to do this...
+    zmin = (1.0/ahalo) -1 
+    do ilev=1,nlev    
+      alev(ilev) = 1.0/(1.0+zmin+(zmax-zmin)*real(ilev-1)/real(nlev-1))
+    end do
+  end if
+ 
+  ! Print the output times to console
+  if (found_switch_verbose) then
+    write(*,*) 
+    write(*,*) 'The redshifts at which the tree will be stored:'
+    do ilev=1,nlev
+        write(*,'(1x,a2,1x,f6.3,1x,a,f6.3)') 'z=',(1/alev(ilev)) -1.0, &
+          & 'at which deltcrit=', deltcrit(alev(ilev))
+    end do
+  end if
+
+  ! Define root level
+  !
+  ! APC: The PCH code was a little uncelar on this point. In principle one could
+  ! have output levels `alev` that did not include the tree root `ahalo`, but
+  ! the `make_trees` routine enforces alev(1) = ahalo (or has uncertain
+  ! behaviour if this is not the case). 
+
+  ! In fact, the original code doesn't use the a0 (=ahalo) argument to
+  ! make_trees at all.
+
+  ! Here we force this to be the case:
+  ahalo = alev(1)
 
   ! Set up HDF5 output file
-    call h5open_f(hdferr)
+#ifdef WITH_HDF5
+  call h5open_f(hdferr)
+#endif
 
   ! Allocate tree workspace
   allocate(trees_nhalos(ntrees), source=0)
@@ -149,7 +246,7 @@ program tree
   write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
   write(*,*) trim(file_path)
 
-  ! FIXME estimate these numbers better
+  ! APC FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
   call create_hdf5_output(file_path, N_min, N_max) 
@@ -186,10 +283,20 @@ program tree
     ! Write the tree to active output file
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
-    call write_tree_hdf5(file_path, itree-1, This_Node, &
-      & nhalo, nlev)
 
-    write(0,*) 'Wrote tree',itree, nhalo, This_Node%mhalo
+    if (pa_output%output_format.eq.OUTPUT_HDF5) then
+#ifdef HDF5
+      call write_tree_hdf5(file_path, itree-1, this_node, &
+        & nhalo, nlev)
+#else
+      write(*,*) "Not writing tree -- hdf5 format specified, but no HDF5 support!"
+#endif
+    elseif (pa_output%output_format.eq.OUTPUT_JET) then
+      call write_tree_jet(file_path, itree-1, this_node, &
+        & nhalo, nlev, alev, nhalos_per_file(ifile))
+    endif
+
+    write(*,*) 'Wrote tree',itree, nhalo, This_Node%mhalo
     ntrees_per_file(ifile) = ntrees_per_file(ifile) + 1
 
     ! Record number of halos for trees table
@@ -200,22 +307,31 @@ program tree
     if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
       write(*,*) "Writing trees", first_tree_in_file, itree
 
-      ! Write the aexp list
-      call write_output_times(file_path, alev)
-     
-      ! Write the trees table
-      call write_tree_table(file_path, trees_nhalos(first_tree_in_file:itree))
+#ifdef HDF5
+      if (pa_output%output_format.eq.OUTPUT_HDF5) then
+        ! Write the aexp list
+        call write_output_times(file_path, alev)
+       
+        ! Write the trees table
+        call write_tree_table(file_path, trees_nhalos(first_tree_in_file:itree))
 
-      ! Write parameters
-      call write_parameters(file_path)
-      
+        ! Write parameters
+        call write_parameters(file_path)
+      end if
+#endif
+
       ! Set up the next file
       if (itree.lt.ntrees) then
         ifile = ifile + 1
         first_tree_in_file = itree + 1
-        write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
+        write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, file_ext
         write(*,*) trim(file_path)
-        call create_hdf5_output(file_path, N_min, N_max) 
+
+#ifdef HDF5
+        if (pa_output%output_format.eq.OUTPUT_HDF5) then
+          call create_hdf5_output(file_path, N_min, N_max) 
+        end if
+#endif
       end if
     end if 
 
@@ -268,6 +384,29 @@ program tree
   deallocate(jphalo)
 
   ! Tidy up HDF5
+#ifdef WITH_HDF5
   call h5close_f(hdferr)
+#endif
+
+contains
+
+  subroutine insertion_sort_desc(arr, n)
+  ! A ChatGPT descending order insertion sort...
+      implicit none
+      integer, intent(in) :: n
+      real, intent(inout) :: arr(n)
+      integer :: i, j
+      real :: key
+
+      do i = 2, n
+          key = arr(i)
+          j = i - 1
+          do while (j > 0 .and. arr(j) < key)  ! Reverse comparison
+              arr(j + 1) = arr(j)
+              j = j - 1
+          end do
+          arr(j + 1) = key
+      end do
+  end subroutine insertion_sort_desc
 
 end program tree
