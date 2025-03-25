@@ -10,9 +10,11 @@ program tree
   use Modified_Merger_Tree ! modified_merger_tree.F90
   use Overdensity
   use Parameter_File
-  use HDF5
   use IO
   use Commandline
+#ifdef WITH_HDF5
+  use HDF5
+#endif
   implicit none
 
   type (TreeNode), pointer :: This_Node
@@ -53,9 +55,13 @@ program tree
   character(len=1024)  :: file_path
   character(len=5)     :: file_ext
 
+#ifdef WITH_HDF5
   ! HDF5 output
   integer(hsize_t) :: N_min, N_max
   integer :: hdferr
+#else
+  integer :: N_min, N_max
+#endif
 
   ! Parse the command line 
   call read_command_line_args()
@@ -249,7 +255,9 @@ program tree
   ! APC FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
+#ifdef WITH_HDF5
   call create_hdf5_output(file_path, N_min, N_max) 
+#endif
 
   ! Start generating trees
   generate_trees: do itree=1,ntrees
@@ -285,7 +293,7 @@ program tree
     This_Node => MergerTree(1)
 
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
-#ifdef HDF5
+#ifdef WITH_HDF5
       call write_tree_hdf5(file_path, itree-1, this_node, &
         & nhalo, nlev)
 #else
@@ -307,7 +315,7 @@ program tree
     if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
       write(*,*) "Writing trees", first_tree_in_file, itree
 
-#ifdef HDF5
+#ifdef WITH_HDF5
       if (pa_output%output_format.eq.OUTPUT_HDF5) then
         ! Write the aexp list
         call write_output_times(file_path, alev)
@@ -327,7 +335,7 @@ program tree
         write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, file_ext
         write(*,*) trim(file_path)
 
-#ifdef HDF5
+#ifdef WITH_HDF5
         if (pa_output%output_format.eq.OUTPUT_HDF5) then
           call create_hdf5_output(file_path, N_min, N_max) 
         end if
@@ -371,9 +379,11 @@ program tree
     write(*,*) trim(file_path)
 
     ! Write the header
+#ifdef WITH_HDF5
     call write_header(file_path, '/Header', nlev-1, & 
       & nhalos_per_file(ifile), sum(trees_nhalos), &
       & ntrees_per_file(ifile), ntrees, nfiles)
+#endif
   end do
 
   deallocate(nhalos_per_file)

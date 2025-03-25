@@ -12,7 +12,7 @@ RM := rm -f
 BUILD_TYPE := DEVELOP
 
 # Comment following line to disable HDF5
-HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
+#HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
 
 # Compile and Compiler flags
 FC = gfortran
@@ -34,10 +34,6 @@ ifdef HDF5_DIR
 	HDF5_FLAGS := -I$(HDF5_DIR)/include
 	HDF5_LIBS  := -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
 	HDF5_INCL_DIR := '-I$(HDF5_DIR)/include'
-else
-	HDF5_FLAGS = ''
-	HDF5_INCL_DIR = ''
-	HDF5_LIBS = ''
 endif
 
 # General rules
