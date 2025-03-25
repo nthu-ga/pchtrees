@@ -55,14 +55,18 @@ OBJECTS := $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(SRCS))))
 MOD_DIR := ./build
 
 # Declare all public targets
-.PHONY: all clean debug
-all: pchtrees
+.PHONY: all clean debug prepare
+
+all: prepare pchtrees
 	@echo ''
 ifdef HDF5_DIR
 	@echo 'Built with HDF5 support'
 else
 	@echo 'Built without HDF5 support'
 endif
+
+prepare:
+	@mkdir -p $(BUILD_DIR)
 
 clean:
 	$(RM) $(addprefix $(BUILD_DIR)/, *.mod *.smod) $(OBJECTS) pchtrees
