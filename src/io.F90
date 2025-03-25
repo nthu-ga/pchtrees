@@ -32,7 +32,30 @@ module IO
 
 contains
 
+  subroutine create_jet_output(filename)
+    implicit none
+    character(len=*), intent(IN) :: filename
+    integer :: unit_num, ierr
+    logical :: file_exists
+
+    inquire(file=trim(filename), exist=file_exists)
+    if (file_exists) then
+      write(*,*) 'Remove existing output file: ', trim(filename)
+      stop
+    endif 
+
+    open(newunit=unit_num, file=filename, status="new", action="read", iostat=ierr)
+ 
+    if (ierr.ne.0) then
+      write(*,*) 'Error creating JET output'
+      stop
+    endif
+
+    close(unit_num)
+  end subroutine create_jet_output
+
   subroutine write_tree_jet(filename, tree_id, Tree_Root, nnodes, nlevels, alev, idx_offset)
+    implicit none
     !
     ! Writes tree in "JET" text format
     !

@@ -250,8 +250,8 @@ program tree
   ifile = 1
   first_tree_in_file = 1
   write(file_path, '(A, A, I3.3, A, A)') trim(pa_output%file_base), '.', ifile, '.', trim(pa_output%file_ext)
-  write(*,*) ' Output file:   ', trim(file_path)
-  write(*,*) ' Output format: ', pa_output%output_format
+  write(*,*) 'Output file:   ', trim(file_path)
+  write(*,*) 'Output format: ', pa_output%output_format
 
   ! APC FIXME estimate these numbers better
   N_min = 100
@@ -259,10 +259,13 @@ program tree
   if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
     call create_hdf5_output(file_path, N_min, N_max) 
+#else
+    if (found_switch_verbose) then
+      write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
+    end if
 #endif
   else if (pa_output%output_format.eq.OUTPUT_JET) then
-    open(newunit=unit_num, file=file_path, status="new", action="write", iostat=ierr)
-    close(unit_num)
+    call create_jet_output(file_path)
   else
     write(*,*) 'FATAL'
     stop
@@ -346,14 +349,17 @@ program tree
         first_tree_in_file = itree + 1
 
         write(file_path, '(A, A, I3.3, A, A)') trim(pa_output%file_base), '.', ifile, '.', trim(pa_output%file_ext)
-        write(*,*) ' Output file:   ', trim(file_path)
+        write(*,*) 'Output file:   ', trim(file_path)
         if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
           call create_hdf5_output(file_path, N_min, N_max) 
+#else
+          if (found_switch_verbose) then
+            write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
+          end if
 #endif
         else if (pa_output%output_format.eq.OUTPUT_JET) then
-          open(newunit=unit_num, file=file_path, status="new", action="write", iostat=ierr)
-          close(unit_num)
+          call create_jet_output(file_path)
         end if
       end if need_more_files
     end if write_file
