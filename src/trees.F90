@@ -242,7 +242,7 @@ program tree
   nhalomax = 0 ! initialise
   nhalo    = 0
   
-  nfiles = ceiling(real(ntrees) / real(pa_runtime%max_trees_per_file))
+  nfiles = ceiling(real(ntrees) / real(pa_output%max_trees_per_file))
   allocate(ntrees_per_file(nfiles), source=0)
   allocate(nhalos_per_file(nfiles), source=0)
   
@@ -327,7 +327,7 @@ program tree
     nhalos_per_file(ifile) = nhalos_per_file(ifile) + nhalo
 
     ! Close and refresh output file if needed
-    write_file: if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
+    write_file: if ((ntrees_per_file(ifile).eq.pa_output%max_trees_per_file).or.(itree.eq.ntrees)) then
       write(*,*) "Writing trees", first_tree_in_file, itree
 
 #ifdef WITH_HDF5

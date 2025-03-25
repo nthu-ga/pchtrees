@@ -9,7 +9,7 @@ module Parameter_File
   ! Default parameters 
 
   integer, parameter :: PA_RUNTIME_ISEED_DEF = -8635
-  integer, parameter :: PA_RUNTIME_MAX_TREES_PER_FILE_DEF = 1000
+  integer, parameter :: PA_OUTPUT_MAX_TREES_PER_FILE_DEF = 1000
 
   integer, parameter :: PA_OUTPUT_NLEV_DEF = 10
   real,    parameter :: PA_OUTPUT_MRES_DEF = 1.0e+08
@@ -41,9 +41,7 @@ module Parameter_File
     character(len=:), allocatable :: data_path
     ! Initial random seed
     integer :: iseed = PA_RUNTIME_ISEED_DEF
-    ! Maximum trees per file
-    integer :: max_trees_per_file = PA_RUNTIME_MAX_TREES_PER_FILE_DEF
-  end type Parameters_Runtime
+      end type Parameters_Runtime
   type(Parameters_Runtime) :: pa_runtime
 
   type Parameters_Output
@@ -60,6 +58,8 @@ module Parameter_File
     ! Output time list
     character(len=:), allocatable :: aexp_list
     logical :: have_aexp_list
+    ! Maximum trees per file
+    integer :: max_trees_per_file = PA_OUTPUT_MAX_TREES_PER_FILE_DEF
   end type Parameters_Output
   type(Parameters_Output) :: pa_output
  
@@ -196,15 +196,12 @@ contains
       & pa_runtime%data_path, default='./data')
     call read_value(section%get("iseed", error=.false.), &
       & pa_runtime%iseed, default=PA_RUNTIME_ISEED_DEF)
-    call read_value(section%get("max_trees_per_file", error=.false.), &
-      & pa_runtime%max_trees_per_file, default=PA_RUNTIME_MAX_TREES_PER_FILE_DEF)
-
+    
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[runtime]'
       call print_kv('data_path', pa_runtime%data_path)
       call print_kv('iseed', pa_runtime%iseed)
-      call print_kv('max_trees_per_file', pa_runtime%max_trees_per_file)
     end if
 
     ! Get [output] section.
@@ -215,7 +212,9 @@ contains
       & pa_output%nlev, default=PA_OUTPUT_NLEV_DEF)
     call read_value(section%get('mres', error=.false.), & 
       & pa_output%mres, default=PA_OUTPUT_MRES_DEF)
-   
+    call read_value(section%get("max_trees_per_file", error=.false.), &
+      & pa_output%max_trees_per_file, default=PA_OUTPUT_MAX_TREES_PER_FILE_DEF)
+
     ! Output format
     temp_keyval = section%get('output_format', error=.false.)
     select case(temp_keyval%value)
