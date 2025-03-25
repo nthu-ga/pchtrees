@@ -222,8 +222,15 @@ contains
     case ('jet')
       pa_output%output_format = OUTPUT_JET
     case default
-      write(*,*) 'Invalid output format:', temp_keyval%value
-      stop
+      if (dump_parameters) then
+        ! Set a dummy value; we want to write a default string as output
+        ! and then quit, but we need to keep going here to process the
+        ! other parameters.
+        pa_output%output_format = -1
+      else
+        write(*,*) 'Warning: invalid output format:', temp_keyval%value
+        stop
+      end if
     end select
 
     ! Optional aexp list
@@ -251,7 +258,13 @@ contains
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[output]'
-      call print_kv('output_format', pa_output%output_format)
+      if (pa_output%output_format.ge.0) then
+        call print_kv('output_format', pa_output%output_format)
+      else
+        ! A value of -1 indicates we're writing default arguments
+        ! so we should dump a default string, not the enum value.
+        call print_kv('output_format', 'jet')
+      endif
       call print_kv('file_base', pa_output%file_base)
       call print_kv('nlev', pa_output%nlev)
       call print_kv('mres', pa_output%mres)

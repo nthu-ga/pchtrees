@@ -17,6 +17,13 @@ module Commandline
   logical :: found_switch_defaults = .false.
   logical :: found_switch_verbose  = .false.
 
+  logical :: is_kw_pf_path = .false.
+  logical :: is_kw_ntrees  = .false.
+  logical :: is_kw_mphalo  = .false.
+  logical :: is_kw_ahalo   = .false.
+  logical :: is_kw_zmax    = .false.
+  logical :: is_kw_nlev    = .false.
+
 contains 
 
   subroutine read_command_line_args()
@@ -26,7 +33,6 @@ contains
     character(len=64) :: argval 
 
     nargs = command_argument_count()
-    write(*,*) 'Have', nargs, 'arguments'
 
     if (nargs.eq.0) call usage()
   
@@ -40,14 +46,12 @@ contains
         case ('--defaults')
           ! Print default options, then stop
           if (.not.found_switch_defaults) then
-            write(*,*) 'Keyword argument: defaults'
             found_switch_defaults = .true.
             i = i + 1
           end if
         case ('--verbose')
           ! Print more output
           if (.not.found_switch_verbose) then
-            write(*,*) 'Keyword argument: verbose'
             found_switch_verbose = .true.
             i = i + 1
           end if
@@ -55,8 +59,8 @@ contains
           ! Parameter file path
           if (i + 1 <= nargs) then
             if (.not.found_pf_path) then
-              write(*,*) 'Keyword argument: path'
               call get_command_argument(i + 1, arg_pf_path)
+              is_kw_pf_path = .true.
               found_pf_path = .true.
               i = i + 2
             else
@@ -68,8 +72,8 @@ contains
           ! Number of trees to generate
           if (i + 1 <= nargs) then
             if (.not.found_ntrees) then
-              write(*,*) 'Keyword argument: number of trees'
               call get_command_argument(i + 1, arg_ntrees)
+              is_kw_ntrees = .true.
               found_ntrees = .true.
               i = i + 2
             else
@@ -81,8 +85,8 @@ contains
           ! Root mass of halos to growe
           if (i + 1 <= nargs) then
             if (.not.found_mphalo) then
-              write(*,*) 'Keyword argument: target root mass (Msol)'
               call get_command_argument(i + 1, arg_mphalo)
+              is_kw_mphalo = .true.
               found_mphalo = .true.
               i = i + 2
             else
@@ -94,8 +98,8 @@ contains
           ! Expansion factor at root of treee
           if (i + 1 <= nargs) then
             if (.not.found_ahalo) then
-              write(*,*) 'Keyword argument: expansion factor at root of tree'
               call get_command_argument(i + 1, arg_ahalo)
+              is_kw_ahalo = .true.
               found_ahalo = .true.
               i = i + 2
             else
@@ -107,12 +111,12 @@ contains
           ! Highest redshift in tree
           if (i + 1 <= nargs) then
             if (.not.found_zmax) then
-              write(*,*) 'Keyword argument: highest redshift in tree'
               call get_command_argument(i + 1, arg_zmax)
+              is_kw_zmax = .true.
               found_zmax = .true.
               i = i + 2
             else
-              write(*,*) 'Argument given as keyword and positional:zmax'
+              write(*,*) 'Argument given as keyword and positional: zmax'
               stop
             end if
           end if
@@ -120,12 +124,12 @@ contains
           ! Override nlev from parameter file
           if (i + 1 <= nargs) then
             if (.not.found_nlev) then
-              write(*,*) 'Keyword argument: highest redshift in tree'
               call get_command_argument(i + 1, arg_nlev)
+              is_kw_nlev = .true.
               found_nlev = .true.
               i = i + 2
             else
-              write(*,*) 'Argument given as keyword and positional:nlev'
+              write(*,*) 'Argument given as keyword and positional: nlev'
               stop
             end if
           end if
@@ -139,27 +143,22 @@ contains
 
         ! Positional argument
         if (.not.found_pf_path) then
-          write(*,*) 'Positional argument: path'
           call get_command_argument(i, arg_pf_path)
           found_pf_path = .true.
           i = i + 1
         else if (.not.found_ntrees) then
-          write(*,*) 'Positional argument: ntrees'
           call get_command_argument(i, arg_ntrees)
           found_ntrees = .true.
           i = i + 1
         else if (.not.found_mphalo) then
-          write(*,*) 'Positional argument: mphalo'
           call get_command_argument(i, arg_mphalo)
           found_mphalo = .true.
           i = i + 1
         else if (.not.found_ahalo) then
-          write(*,*) 'Positional argument: ahalo'
           call get_command_argument(i, arg_ahalo)
           found_ahalo = .true.
           i = i + 1
         else if (.not.found_zmax) then
-          write(*,*) 'Positional argument: zmax'
           call get_command_argument(i, arg_zmax)
           found_zmax = .true.
           i = i + 1
@@ -170,26 +169,40 @@ contains
       end if is_keyword_arg
     end do loop_over_args
 
-    ! Check for valid parameters 
-    if (.not.found_ntrees) then
-      write(*,*) "Missing number of trees to generate, using default (1)"
-      arg_ntrees = "1"
-    endif
+    if (found_switch_verbose) then
+      write(*,*) 'Have', nargs, 'arguments'
+      if (found_switch_verbose)  call write_kw_or_pos('verbose',  .true.)
+      if (found_switch_defaults) call write_kw_or_pos('defaults', .true.)  
+      if (found_pf_path)         call write_kw_or_pos('path',   is_kw_pf_path)
+      if (found_ntrees)          call write_kw_or_pos('ntrees', is_kw_ntrees)
+      if (found_mphalo)          call write_kw_or_pos('mphalo (target root mass, Msol)',   is_kw_mphalo)
+      if (found_ahalo)           call write_kw_or_pos('ahalo (root expansion factor',      is_kw_ahalo)
+      if (found_zmax)            call write_kw_or_pos('zmax (highest redshift in tree)',   is_kw_zmax)
+      if (found_nlev)            call write_kw_or_pos('nlev (number of tree levels)',      is_kw_zmax)
+    end if
 
-    if (.not.found_mphalo) then
-      write(*,*) "Missing target halo mass, using default (1e12 Msol)"
-      arg_mphalo = "1.0e+12" 
-    endif
+    if (.not.found_switch_defaults) then
+      ! Check for valid parameters (unless we're printing defaults) 
+      if (.not.found_ntrees) then
+        write(*,*) "Missing number of trees to generate, using default (1)"
+        arg_ntrees = "1"
+      endif
 
-    if (.not.found_ahalo) then
-      write(*,*) "Missing expansion factor at root of trees, using default (1.0)"
-      arg_ahalo = "1.0" 
-    endif
+      if (.not.found_mphalo) then
+        write(*,*) "Missing target halo mass, using default (1e12 Msol)"
+        arg_mphalo = "1.0e+12" 
+      endif
 
-    if (.not.found_zmax) then
-      write(*,*) "Missing highest redshift in tree, using default (4.0)"
-      arg_zmax = "4.0" 
-    endif
+      if (.not.found_ahalo) then
+        write(*,*) "Missing expansion factor at root of trees, using default (1.0)"
+        arg_ahalo = "1.0" 
+      endif
+
+      if (.not.found_zmax) then
+        write(*,*) "Missing highest redshift in tree, using default (4.0)"
+        arg_zmax = "4.0" 
+      endif
+    end if
   end subroutine read_command_line_args
 
   subroutine usage()
@@ -210,4 +223,16 @@ contains
     write(*,*) 
 
   end subroutine usage
+
+  subroutine write_kw_or_pos(argname, is_kw)
+    character(len=*), intent(in) :: argname
+    logical, intent(in) :: is_kw
+
+    if (is_kw) then
+        write(*,*) 'Keyword argument: ', trim(argname)
+      else
+        write(*,*) 'Positional argument: ', trim(argname)
+    endif
+  end subroutine write_kw_or_pos
+
 end module Commandline
