@@ -315,7 +315,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]
      write(*,'(a,f7.3,a)') 'make_tree(): internal storage = ',mbytes,' Mbytes' 
   end if
 
-!write(0,*)'created storage arrays'
+!write(*,*)'created storage arrays'
   ! 
   ! Reset output arrays to 0 or -1 (=pointer to nothing)
   ! 
@@ -394,7 +394,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]
         ! If inode > inodemax, exit this loop and restart with larger inodemax.
         if (inode.gt.inodemax) then
 #ifdef INFO
-           write(0,*) 'make_tree(): INFO - increasing size inodemax'
+           write(*,*) 'make_tree(): INFO - increasing size inodemax'
 #endif
            deallocate(wnode)
            deallocate(ml)

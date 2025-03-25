@@ -57,7 +57,7 @@ subroutine memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
         n_allocate=1
         ierr=0
         !mbytes=real((sizeof(Node)*nhalomax))/real(1024**2)
-        !write(0,'(a,f7.1,a)') 'main storage= ',mbytes,' Mbytes'
+        !write(*,'(a,f7.1,a)') 'main storage= ',mbytes,' Mbytes'
      else
         stop 'memory(): nhalomax>MAXHALOS'
      end if
@@ -66,13 +66,13 @@ subroutine memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
      ! than nhalomax then reduce nhalomax by a factor SHRINK 
      call Memory_Deallocate
      nhalomax=max(int(float(nhalomax)/SHRINK),nhalomax_min)
-     write(0,*) 'shrink: nhalomax=',nhalomax
+     write(*,*) 'shrink: nhalomax=',nhalomax
      allocate(MergerTree_Aux(nhalomax),stat=alloc_err)
      if (alloc_err.ne.0) stop 'Memory(): FATAL - Failed to allocate memory [MergerTree_Aux]'
      n_allocate=1
      if (alloc_err.ne.0) stop 'Memory(): FATAL - Failed to allocate memory [NBodyMergerTree_Aux]'
      !mbytes=real(sizeof(Node)*nhalomax)/real(1024**2)
-     !write(0,'(a,f7.1,a)') 'main storage= ',mbytes,' Mbytes'
+     !write(*,'(a,f7.1,a)') 'main storage= ',mbytes,' Mbytes'
   end if
   nhalo_prev=nhalo ! save this value for the next call
   return
