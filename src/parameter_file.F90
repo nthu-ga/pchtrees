@@ -51,6 +51,8 @@ module Parameter_File
     integer :: output_format
     ! Base of file name (e.g. <file_base>.nnn.hdf5)
     character(len=:), allocatable :: file_base
+    ! Extension
+    character(len=:), allocatable :: file_ext
     ! Number of levels in the tree
     integer :: nlev = PA_OUTPUT_NLEV_DEF 
     ! Mass resolution
@@ -219,8 +221,10 @@ contains
     select case(temp_keyval%value)
     case ('hdf5')
       pa_output%output_format = OUTPUT_HDF5
+      pa_output%file_ext = 'hdf5'
     case ('jet')
       pa_output%output_format = OUTPUT_JET
+      pa_output%file_ext = 'jet.txt'
     case default
       if (dump_parameters) then
         ! Set a dummy value; we want to write a default string as output

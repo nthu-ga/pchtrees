@@ -228,8 +228,8 @@ program tree
   ! Here we force this to be the case:
   ahalo = alev(1)
 
-  ! Set up HDF5 output file
 #ifdef WITH_HDF5
+  ! Set up HDF5 output file
   call h5open_f(hdferr)
 #endif
 
@@ -249,15 +249,24 @@ program tree
   ! Set up first output file
   ifile = 1
   first_tree_in_file = 1
-  write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, ".hdf5"
-  write(*,*) trim(file_path)
+  write(file_path, '(A, A, I3.3, A, A)') trim(pa_output%file_base), '.', ifile, '.', trim(pa_output%file_ext)
+  write(*,*) ' Output file:   ', trim(file_path)
+  write(*,*) ' Output format: ', pa_output%output_format
 
   ! APC FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
+  if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
-  call create_hdf5_output(file_path, N_min, N_max) 
+    call create_hdf5_output(file_path, N_min, N_max) 
 #endif
+  else if (pa_output%output_format.eq.OUTPUT_JET) then
+    open(newunit=unit_num, file=file_path, status="new", action="write", iostat=ierr)
+    close(unit_num)
+  else
+    write(*,*) 'FATAL'
+    stop
+  end if
 
   ! Start generating trees
   generate_trees: do itree=1,ntrees
@@ -302,6 +311,9 @@ program tree
     elseif (pa_output%output_format.eq.OUTPUT_JET) then
       call write_tree_jet(file_path, itree-1, this_node, &
         & nhalo, nlev, alev, nhalos_per_file(ifile))
+    else
+      write(*,*) 'FATAL'
+      stop
     endif
 
     write(*,*) 'Wrote tree',itree, nhalo, This_Node%mhalo
@@ -312,7 +324,7 @@ program tree
     nhalos_per_file(ifile) = nhalos_per_file(ifile) + nhalo
 
     ! Close and refresh output file if needed
-    if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
+    write_file: if ((ntrees_per_file(ifile).eq.pa_runtime%max_trees_per_file).or.(itree.eq.ntrees)) then
       write(*,*) "Writing trees", first_tree_in_file, itree
 
 #ifdef WITH_HDF5
@@ -329,19 +341,22 @@ program tree
 #endif
 
       ! Set up the next file
-      if (itree.lt.ntrees) then
+      need_more_files: if (itree.lt.ntrees) then
         ifile = ifile + 1
         first_tree_in_file = itree + 1
-        write(file_path, '(A, A, I3.3, A)') trim(pa_output%file_base),'.', ifile, file_ext
-        write(*,*) trim(file_path)
 
-#ifdef WITH_HDF5
+        write(file_path, '(A, A, I3.3, A, A)') trim(pa_output%file_base), '.', ifile, '.', trim(pa_output%file_ext)
+        write(*,*) ' Output file:   ', trim(file_path)
         if (pa_output%output_format.eq.OUTPUT_HDF5) then
+#ifdef WITH_HDF5
           call create_hdf5_output(file_path, N_min, N_max) 
-        end if
 #endif
-      end if
-    end if 
+        else if (pa_output%output_format.eq.OUTPUT_JET) then
+          open(newunit=unit_num, file=file_path, status="new", action="write", iostat=ierr)
+          close(unit_num)
+        end if
+      end if need_more_files
+    end if write_file
 
     !   You might want to insert your own code here and pass it the
     !   tree.
@@ -370,6 +385,7 @@ program tree
   ! Write the trees table
   ! all write_tree_table(pa_output%file_path, trees_nhalos)
   
+#ifdef WITH_HDF5
   ! Loop over each output file and write the header, which needs information
   ! about all the files.
 
@@ -379,12 +395,11 @@ program tree
     write(*,*) trim(file_path)
 
     ! Write the header
-#ifdef WITH_HDF5
     call write_header(file_path, '/Header', nlev-1, & 
       & nhalos_per_file(ifile), sum(trees_nhalos), &
       & ntrees_per_file(ifile), ntrees, nfiles)
-#endif
   end do
+#endif
 
   deallocate(nhalos_per_file)
   deallocate(ntrees_per_file)
@@ -393,8 +408,8 @@ program tree
   deallocate(nhalolev)
   deallocate(jphalo)
 
-  ! Tidy up HDF5
 #ifdef WITH_HDF5
+  ! Tidy up HDF5
   call h5close_f(hdferr)
 #endif
 

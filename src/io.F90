@@ -80,7 +80,8 @@ contains
 
     ! open file 
     ! FIXME
-    open(newunit=unit_num, file=filename, status="old", action="append", iostat=ierr)
+    open(newunit=unit_num, file=filename, status="old", action="write", & 
+      & position="append", iostat=ierr)
 
     This_Node => Tree_Root
     inode   = 1
