@@ -110,7 +110,8 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   ! Uses
   use Numerical_Parameters
   use Time_Parameters
-  use Modified_Merger_Tree
+  use Parameter_File
+  !use Modified_Merger_Tree
 #ifdef DEBUG
   use Run_Statistics
 #endif
@@ -145,11 +146,23 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   !
   ! Data
   data mminlast /0.0/
+
+  ! For brevity
+  real :: G0, gamma_1, gamma_2, eps1, eps2
+
   !
   ! Code
 #ifdef DEBUG
   write (0,*) 'split(): DEBUG - start'
 #endif
+
+  ! For brevity, copy the parameter values to local variables
+  G0      = pa_tree%G0
+  gamma_1 = pa_tree%gamma_1
+  gamma_2 = pa_tree%gamma_2
+  eps1    = pa_tree%eps1
+  eps2    = pa_tree%eps2
+
   ! 0) Since mmin will typically remain fixed we need only compute
   ! sigma(mmin) and slope alpha on the first call of this routine.
   ! 

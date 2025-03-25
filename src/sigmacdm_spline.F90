@@ -28,6 +28,7 @@ real function sigmacdm(m,alpha)
   use Cosmological_Parameters
   use Numerical_Parameters
   use Power_Spectrum_Parameters
+  use Parameter_File
   implicit none
   !
   ! Integers
@@ -137,6 +138,7 @@ subroutine spline_interp(ms,sigma,alpha)
   use Cosmological_Parameters
   use Numerical_Parameters
   use Power_Spectrum_Parameters
+  use Parameter_File
   implicit none
   !
   ! Integers
@@ -174,17 +176,20 @@ subroutine spline_interp(ms,sigma,alpha)
      case (:-1)  ! Tabulated P(k)
         write(splinefile,'(a,a)') trim(pkinfile),'.spline'
      case (3) ! Eisenstein & Hu
-        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2,a1,f6.4)') 'Data/Power_Spec/sigmacdm_',nspec,'_'&
+        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2,a1,f6.4)') &
+             & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_' &
              &,trim(sform),'_',kref ,'.spline.',itrans,'_',omega0,'_',omegab
      case (10) ! WDM
-        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2)') 'Data/Power_Spec/sigmacdm_',nspec,'_',trim(sform)&
+        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2)') &
+             & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform) &
              &,'_',kref,'.spline.',itrans,'_',mwdm
      case default ! CDM
-        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1)') 'Data/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref&
+        write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1)') & 
+             &  TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
              &,'.spline.',itrans
      end select
      io=0
-     open (10,file=splinefile,status='unknown') 
+     open (10,file=splinefile,status='unknown')
      read (10,*,iostat=io) NSPLINE
      if (io.ne.0) then
         close (10)
@@ -285,6 +290,7 @@ subroutine make_spline
   use Cosmological_Parameters
   use Numerical_Parameters
   use Power_Spectrum_Parameters
+  use Parameter_File
   implicit none
   integer NT,i,ik
   parameter (NT=100000)
@@ -296,7 +302,7 @@ subroutine make_spline
   !
   ! First lock the power_spectrum files
   !
-  open (10,file='Data/Power_Spec/lock',form='formatted',status='unknown')
+  open (10,file=TRIM(pa_runtime%data_path)//'/Power_Spec/lock',form='formatted',status='unknown')
   write (10,*) 'locked'
   close (10)
   !
@@ -391,7 +397,7 @@ subroutine make_spline
   !
   ! Unlock the power spectra files
   !    
-  command='rm -f Data/Power_Spec/lock'
+  command='rm -f '//TRIM(pa_runtime%data_path)//'/Power_Spec/lock'
 !  irem=system_call(command)
 !#ifdef WARN
 !  if (irem.ne.0) write (0,*) 'make_spline(): WARNING - failed to remove lock file'
@@ -419,6 +425,7 @@ subroutine pkfacs(k,rf,Gamma_eff,pk,pw2k3,pwdwk3)
   use Cosmological_Parameters
   use Numerical_Parameters
   use Power_Spectrum_Parameters
+  use Parameter_File
   implicit none
   !
   ! Integers

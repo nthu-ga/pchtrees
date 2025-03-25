@@ -1,3 +1,13 @@
+# This project
+pchtrees
+Data/Power_Spec/sigmac1.00_+0.000_1.00.spline.*
+hardcopy.*
+
+examples/progenitors
+
+# Meson
+subprojects
+
 # Vim
 *.swp
 

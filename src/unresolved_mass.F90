@@ -14,7 +14,8 @@
 ! dz=zmax/NTAB should be small so that the trapezium rule is accurate for z>dz.
 
 real function J_UNRESOLVED(z)
-    use Modified_Merger_Tree
+    !use Modified_Merger_Tree
+    use Parameter_File
 
     implicit none
     real, intent(in) :: z
@@ -25,6 +26,16 @@ real function J_UNRESOLVED(z)
     integer, parameter :: NTAB=1000
     integer, save :: ifirst=0
     real, save :: J_tab(NTAB), z_tab(NTAB), inv_dz
+
+    ! For brevity
+    real :: G0, gamma_1, gamma_2, eps1, eps2
+
+    ! For brevity, copy the parameter values to local variables
+    G0      = pa_tree%G0
+    gamma_1 = pa_tree%gamma_1
+    gamma_2 = pa_tree%gamma_2
+    eps1    = pa_tree%eps1
+    eps2    = pa_tree%eps2
 
     if (abs(gamma_1).gt.EPS) then ! gamma_1.ne.0
       if (ifirst.eq.0) then ! on the first call tabulate the integral.
