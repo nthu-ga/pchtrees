@@ -312,7 +312,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [mr]'
      allocate(lnode(inodemax),stat=alloc_err)
 if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]'
      mbytes=real(inodemax*(4*3+1))/real(1024**2)
-     write(0,'(a,f7.3,a)') 'make_tree(): internal storage = ',mbytes,' Mbytes' 
+     write(*,'(a,f7.3,a)') 'make_tree(): internal storage = ',mbytes,' Mbytes' 
   end if
 
 !write(0,*)'created storage arrays'
