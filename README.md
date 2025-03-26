@@ -24,6 +24,8 @@ Note that the code in this repository maskes use of the TinyTOML parser by Thoma
 
 ## Building
 
+**The code requires gcc (gfortran) 9.4.0 or later.**
+
 After cloning this repository, the code can be built with `make all`, which will produce the `./pchtrees` executable. 
 
 Before building, you may want to edit the makefile to set the following parameters:
