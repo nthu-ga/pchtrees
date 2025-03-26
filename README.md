@@ -14,11 +14,15 @@ The algorithm is exactly the same, although minor edits have been made to parts 
 
 For the original README, see [`./docs/README`](https://github.com/nthu-ga/pchtrees/blob/main/docs/README_original).
 
-# Acknowledgement
+## Acknowledgement
 
+Work that makes use of this code should reference Parkinson, Cole and Helly 2008 MNRAS, 383, 557 and also acknowledge the "GALFORM Team" for making the code available.
 
+The code in this repository is made available under the same conditions as the original PCH code. 
 
-# Building
+Note that the code in this repository maskes use of the TinyTOML parser by Thomas Marks under the MIT License (see LICENSE). Link: https://github.com/archermarx/TinyTOML
+
+## Building
 
 After cloning this repository, the code can be built with `make all`, which will produce the `./pchtrees` executable. 
 
@@ -29,7 +33,7 @@ Before building, you may want to edit the makefile to set the following paramete
 
 If `HDF5_DIR` is not set, the code will be built wihtout support for HDF5 output.
 
-# Running
+## Running
 
 `./pchtrees --defaults` dumps the default parameters to `STDOUT`. You can copy this output to create a fiducial parameter file, which you can customize.
 
