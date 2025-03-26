@@ -9,7 +9,7 @@ RM := rm -f
 # BUILD_TYPE := DEVELOP  
 # BUILD_TYPE := DEBUG    # Excessive output
 
-BUILD_TYPE := DEVELOP
+BUILD_TYPE := OPT
 
 # Comment following line to disable HDF5
 #HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
@@ -84,7 +84,7 @@ $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.F90
 # Dependencies
 ${BUILD_DIR}/defined_types.o: $(addprefix $(BUILD_DIR)/,kind_numbers.o)
 ${BUILD_DIR}/memory_modules.o: $(addprefix $(BUILD_DIR)/,defined_types.o)
-${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o)
+${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum_parameter.o)
 ${BUILD_DIR}/indexxx.o: $(addprefix $(BUILD_DIR)/, num_pars.o)
 ${BUILD_DIR}/memory.o: $(addprefix $(BUILD_DIR)/, memory_modules.o)
 ${BUILD_DIR}/parameter_file.o: $(addprefix $(BUILD_DIR)/, tinytoml.o)
