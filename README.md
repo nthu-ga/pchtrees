@@ -12,7 +12,7 @@ The version in this repository adds the following features:
 
 The algorithm is exactly the same, although minor edits have been made to parts of the original code for readbility, fixing compiler warnings etc.
 
-For the original README, see `./doc/README`
+For the original README, see (https://github.com/nthu-ga/pchtrees/blob/main/docs/README_original)[`./docs/README`]
 
 # Acknowledgement
 
