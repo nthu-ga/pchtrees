@@ -215,7 +215,7 @@ contains
     write(*,*) 'path   (--path  ) : path to parameter file in TOML format'
     write(*,*) 'ntrees (--ntrees) : integer number of trees to generate (1)'
     write(*,*) 'mphalo (--mphalo) : target mass of tree root notes (1e12 Msol)'
-    write(*,*) 'ahalo  (-ahalo)   : Expansion factor at root of tree (1.0)'
+    write(*,*) 'ahalo  (--ahalo)  : Expansion factor at root of tree (1.0)'
     write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)' 
     write(*,*) 
     write(*,*) 'Options (keyword only):'
