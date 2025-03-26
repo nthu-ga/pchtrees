@@ -35,6 +35,8 @@ If `HDF5_DIR` is not set, the code will be built wihtout support for HDF5 output
 
 ## Running
 
+`./pchtrees` alone prints a usage message with information about the command line options.
+
 `./pchtrees --defaults` dumps the default parameters to `STDOUT`. You can copy this output to create a fiducial parameter file, which you can customize.
 
 
