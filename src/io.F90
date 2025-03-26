@@ -111,7 +111,7 @@ contains
     ibranch = 1
     do while (associated(This_Node))
 
-      zred     = 1.0/alev(MergerTree(inode)%jlevel)
+      zred     = 1.0/alev(MergerTree(inode)%jlevel) - 1.0
       mass     = MergerTree(inode)%mhalo
       idx_node = MergerTree(inode)%index + nodes_written_so_far
 
