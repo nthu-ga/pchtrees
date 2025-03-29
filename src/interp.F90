@@ -25,8 +25,14 @@ subroutine interp(n,x,y,x1,y1)
   !     
   ! In case that x1 is exactly equal to either endpoint, reset i1
   ! so interpolation will proceed as if x1 lies within range.
+#ifdef STRICT_REAL_EQ
   if (real_equal(x1,x(1))) i1=1
   if (real_equal(x1,x(n))) i1=n-1
+#else
+  if (x1.eq.x(1)) i1=1
+  if (x1.eq.x(n)) i1=n-1
+#endif
+
   !     
   if (i1.eq.0.or.i1.eq.n) then ! Outside range of array.
      write (0,*) 'interp(): FATAL -  x1 outside range of array x(n)'
@@ -235,11 +241,19 @@ contains
     !
     ! Deal with points exactly at the endpoint in a sensible way
     !if (j.eq.0.and.x1.eq.x(1)) then
+#ifdef STRICT_REAL_EQ
     if (j.eq.0.and.real_equal(x1,x(1))) then
        j=1
     else if (j.eq.n.and.real_equal(x1,x(n))) then
        j=n-1
     end if
+#else
+    if (j.eq.0.and.x1.eq.x(1)) then
+       j=1
+    else if (j.eq.n.and.x1.eq.x(n)) then
+       j=n-1
+    end if
+#endif
     !
     ! Compute interpolation factors and mark if out of range
     if (j.eq.0) then

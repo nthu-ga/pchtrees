@@ -444,7 +444,14 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
 
      ! FIXME APC: REAL equality test!
      !if(w.eq.wlev(ilev).and.nprog.gt.0) then          
+#ifdef STRICT_REAL_EQ
      if (real_equal(w,wlev(ilev)).and.nprog.gt.0) then          
+#else 
+     !if ((w.eq.wlev(ilev)).neqv.real_equal(w,wlev(ilev))) then
+     !   write(*,*) w, wlev(ilev), (w.eq.wlev(ilev)), real_equal(w,wlev(ilev))
+     !end if
+     if ((w.eq.wlev(ilev)).and.nprog.gt.0) then          
+#endif
         if((ifrag+2).gt.nfragmax) then ! Up to 2 more fragments.
            ierr=1 ! Signals failure of routine to calling program.
            return
@@ -514,7 +521,14 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
               call locate(wlev,nlev,w,iw) 
               ilev=iw+1 ! Level above w.
               ! Require w < wlev(ilev).
+#ifdef STRICT_REAL_EQ
               if (real_equal(wlev(ilev),w)) ilev=ilev+1
+#else
+              !if ((w.eq.wlev(ilev)).neqv.real_equal(w,wlev(ilev))) then
+              !  write(*,*) w, wlev(ilev), (w.eq.wlev(ilev)), real_equal(w,wlev(ilev))
+              !end if
+              if (wlev(ilev).eq.w) ilev=ilev+1
+#endif
            end if
            ! 
            ! If this node is at a level of wlev, must update index of active fragment

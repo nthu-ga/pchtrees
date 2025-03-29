@@ -167,7 +167,15 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   ! 0) Since mmin will typically remain fixed we need only compute
   ! sigma(mmin) and slope alpha on the first call of this routine.
   ! 
+
+#ifdef STRICT_REAL_EQUAL
   if (.not.real_equal(mmin,mminlast)) then  
+#else
+  !if ((mmin.eq.mminlast).neqv.real_equal(mmin,mminlast)) then
+  !  write(*,*) mmin, mminlast, (mmin.eq.mminlast), real_equal(mmin,mminlast)
+  !end if
+  if (mmin.ne.mminlast) then  
+#endif
      dlsigdlm=0.0 ! Set to avoid compiler warning
      sig_qmin=sigma(mmin,dlsigdlm)
      sigsq_qmin=sig_qmin**2 
