@@ -5,35 +5,44 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 RM := rm -f
 
 # Build options
-# BUILD_TYPE := OPT
-# BUILD_TYPE := DEVELOP  
-# BUILD_TYPE := DEBUG    # Excessive output
+#BUILD_TYPE := OPT
+BUILD_TYPE:= DEVELOP
+#BUILD_TYPE := DEBUG
 
-BUILD_TYPE := OPT
+# Compiler
+FC = gfortran
+COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
 #HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
 
-# Compile and Compiler flags
-FC = gfortran
-	
-ifeq ($(BUILD_TYPE), DEBUG)
-	FPP_FLAGS += -DDEBUG
+
+# Report build type
+$(info BUILD_TYPE = '$(BUILD_TYPE)')
+
+# Watch out for trailing whitespace in variables set by the end user...
+ifeq ($(strip $(BUILD_TYPE)), DEBUG)
+    FPP_FLAGS += -DDEBUG
 endif
 
-ifeq ($(BUILD_TYPE), DEBUG)
-	FC_FLAGS := -O0 -g -fbacktrace -Wall -Wextra -Wpedantic -fimplicit-none
-else ifeq ($(BUILD_TYPE), DEVELOP)
-	FC_FLAGS := -O0 -g -fbacktrace -Wall -Wextra -Wpedantic -fimplicit-none
-else
-	FC_FLAGS := -O3 -fbacktrace -Wall -fimplicit-none
+ifeq ($(strip $(BUILD_TYPE)), DEBUG)
+    FC_FLAGS := -O0 -g -fbacktrace -Wall -Wextra -Wpedantic -fimplicit-none -fbounds-check -fcheck=all
 endif
 
+ifeq ($(strip $(BUILD_TYPE)), DEVELOP)
+    FC_FLAGS := -O0 -g -fbacktrace -Wall -Wextra -Wpedantic -fimplicit-none
+endif
+
+ifeq ($(strip $(BUILD_TYPE)), OPT)
+    FC_FLAGS := -O3 -fbacktrace -Wall -fimplicit-none
+endif
+
+HDF5_DIR := $(strip $(HDF5_DIR))
 ifdef HDF5_DIR
-	FPP_FLAGS += -DWITH_HDF5
-	HDF5_FLAGS := -I$(HDF5_DIR)/include
-	HDF5_LIBS  := -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
-	HDF5_INCL_DIR := '-I$(HDF5_DIR)/include'
+     FPP_FLAGS += -DWITH_HDF5
+     HDF5_FLAGS := -I$(HDF5_DIR)/include
+     HDF5_LIBS  := -L$(HDF5_DIR)/lib -lhdf5_fortran -lhdf5
+     HDF5_INCL_DIR := '-I$(HDF5_DIR)/include'
 endif
 
 # General rules
@@ -92,8 +101,9 @@ ${BUILD_DIR}/sigmacdm_spline.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmologic
 ${BUILD_DIR}/deltcrit.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o parameter_file.o)
 ${BUILD_DIR}/tree_routines.o: $(addprefix $(BUILD_DIR)/, defined_types.o)
 ${BUILD_DIR}/split_PCH.o: $(addprefix $(BUILD_DIR)/, time_parameters.o run_statistics.o)
+${BUILD_DIR}/make_tree.o: $(addprefix $(BUILD_DIR)/, run_statistics.o)
 ${BUILD_DIR}/trees.o: $(addprefix $(BUILD_DIR)/, defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o cosmological_parameters.o runtime_parameters.o)
 
 # Rule for making the executable
-pchtrees: $(OBJECTS) 
+pchtrees: $(OBJECTS)
 	$(FC) $(FC_FLAGS) $(FPP_FLAGS) -o pchtrees $^ $(HDF5_LIBS)
