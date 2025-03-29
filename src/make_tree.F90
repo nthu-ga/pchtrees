@@ -186,6 +186,9 @@ module Make_Tree_Arrays
 end module Make_Tree_Arrays
 
 module Make_Tree_Module
+  use real_comparison
+  implicit none
+
 contains
 
   function Next_Sibling(Child_Node,Parent_Node,Sibs_Left) result (Sibling)
@@ -264,6 +267,7 @@ subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragt
   use Run_Statistics
 #endif
   use Tree_Memory_Arrays_Passable
+  use real_comparison
   implicit none
   !
   ! Array dimensions
@@ -439,7 +443,8 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
      ! If nprog=2, store inf for both
 
      ! FIXME APC: REAL equality test!
-     if(w.eq.wlev(ilev).and.nprog.gt.0) then          
+     !if(w.eq.wlev(ilev).and.nprog.gt.0) then          
+     if (real_equal(w,wlev(ilev)).and.nprog.gt.0) then          
         if((ifrag+2).gt.nfragmax) then ! Up to 2 more fragments.
            ierr=1 ! Signals failure of routine to calling program.
            return
@@ -509,7 +514,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
               call locate(wlev,nlev,w,iw) 
               ilev=iw+1 ! Level above w.
               ! Require w < wlev(ilev).
-              if (wlev(ilev).eq.w) ilev=ilev+1
+              if (real_equal(wlev(ilev),w)) ilev=ilev+1
            end if
            ! 
            ! If this node is at a level of wlev, must update index of active fragment

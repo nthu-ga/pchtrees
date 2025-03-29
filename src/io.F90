@@ -65,7 +65,6 @@ contains
     real, dimension(:), intent(in) :: alev
     integer, intent(IN), optional :: idx_offset
 
-    integer :: i
     integer :: inode, ibranch
     integer :: nodes_written_so_far
     integer :: unit_num, ierr

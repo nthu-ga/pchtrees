@@ -2,6 +2,7 @@ module Overdensity
   use Cosmological_Parameters
   use Numerical_Parameters
   use Parameter_File
+  use real_comparison
   implicit none
 
 contains
@@ -66,7 +67,7 @@ contains
       deltcrit=1.5*d0*(1.0+(tomega/t)**(2.0/3.0))
       !dldelcdlt=-2.0/3.0/(1.0+(t/tomega)**(2.0/3.0))
     else ! General Omega_0 and Lambda_0
-      if (omega0.ne.omega0_save.or.lambda0.ne.lambda0_save) then
+      if ((.not.real_equal(omega0,omega0_save)).or.(.not.real_equal(lambda0,lambda0_save))) then
 #ifdef INFO
         write (0,*) 'deltcrit(): INFO - constructing look-up table for deltacrit(a)'
         write (0,*) '            for a flat Omega+Lambda=1 cosmology.'

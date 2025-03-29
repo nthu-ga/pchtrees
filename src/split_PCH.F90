@@ -115,6 +115,7 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
 #ifdef DEBUG
   use Run_Statistics
 #endif
+  use real_comparison
   implicit none
   !
   ! Integers
@@ -166,7 +167,7 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   ! 0) Since mmin will typically remain fixed we need only compute
   ! sigma(mmin) and slope alpha on the first call of this routine.
   ! 
-  if (mmin.ne.mminlast) then  
+  if (.not.real_equal(mmin,mminlast)) then  
      dlsigdlm=0.0 ! Set to avoid compiler warning
      sig_qmin=sigma(mmin,dlsigdlm)
      sigsq_qmin=sig_qmin**2 

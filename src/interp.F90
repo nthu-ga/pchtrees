@@ -5,6 +5,7 @@
 ! Subroutine to do linear INTERPOLATION in array, and STOP if x1
 ! if outside endpoints.
 subroutine interp(n,x,y,x1,y1)
+  use real_comparison
   implicit none
   !
   ! Array dimensions
@@ -24,8 +25,8 @@ subroutine interp(n,x,y,x1,y1)
   !     
   ! In case that x1 is exactly equal to either endpoint, reset i1
   ! so interpolation will proceed as if x1 lies within range.
-  if (x1.eq.x(1)) i1=1
-  if (x1.eq.x(n)) i1=n-1
+  if (real_equal(x1,x(1))) i1=1
+  if (real_equal(x1,x(n))) i1=n-1
   !     
   if (i1.eq.0.or.i1.eq.n) then ! Outside range of array.
      write (0,*) 'interp(): FATAL -  x1 outside range of array x(n)'
@@ -214,6 +215,7 @@ contains
   ! Find the interpolating factors for a linear interpolation. Use extrapolation beyond the ends of the x array, but flag such
   ! points as Out of Range
   subroutine Lin_Interp_Find_Interpolation(n,x,x1,j,h,Out_of_Range)
+    use real_comparison
     implicit none
     !
     ! Array dimensions
@@ -232,9 +234,10 @@ contains
     call locate(x,n,x1,j)
     !
     ! Deal with points exactly at the endpoint in a sensible way
-    if (j.eq.0.and.x1.eq.x(1)) then
+    !if (j.eq.0.and.x1.eq.x(1)) then
+    if (j.eq.0.and.real_equal(x1,x(1))) then
        j=1
-    else if (j.eq.n.and.x1.eq.x(n)) then
+    else if (j.eq.n.and.real_equal(x1,x(n))) then
        j=n-1
     end if
     !

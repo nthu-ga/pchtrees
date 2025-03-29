@@ -3,6 +3,7 @@ real function transfer_function(k,q,Gamma_eff)
   ! Uses
   use Cosmological_Parameters
   use Power_Spectrum_Parameters
+  use real_comparison
   implicit none
   !
   ! Floats
@@ -46,7 +47,7 @@ real function transfer_function(k,q,Gamma_eff)
      L=log(exp(1.0)+1.84*betac*sqrt(alphav)*qeff)
      C=14.4+325.0/(1.0+60.5*(qeff**1.11))
      Tsup=L/(L+C*(qeff**2))
-     if (fv.eq.0.0) then
+     if (real_equal(fv,0.0)) then
         qv=0.0
         Bk=1.0
      else
