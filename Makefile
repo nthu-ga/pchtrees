@@ -16,7 +16,6 @@ COMPILER   := $(strip $(COMPILER))
 # Comment following line to disable HDF5
 #HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
 
-
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
 
@@ -34,7 +33,7 @@ ifeq ($(strip $(BUILD_TYPE)), DEVELOP)
 endif
 
 ifeq ($(strip $(BUILD_TYPE)), OPT)
-    FC_FLAGS := -O3 -fbacktrace -Wall -fimplicit-none
+    FC_FLAGS := -O3 -fimplicit-none
 endif
 
 HDF5_DIR := $(strip $(HDF5_DIR))
