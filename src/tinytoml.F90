@@ -618,7 +618,7 @@ module TinyTOML
     end function
 
     pure function no_children() result(children)
-        type(toml_object), allocatable:: children(:)
+        type(toml_object), allocatable :: children(:)
         allocate(children(0))
     end function
 !=================End poutines for manipulating toml_object objects=============
@@ -630,6 +630,8 @@ module TinyTOML
         logical:: exists
 
         inquire(file = file, exist = exists)
+
+        ! write(*,*) 'parse_file ', file, ' ', exists
 
         if (exists) then
             parse_tree%key = ""
@@ -745,15 +747,18 @@ module TinyTOML
 
     recursive function parse_tokens(tokens) result(nodes)
         type(toml_object):: tokens(:)
-        type(toml_object), allocatable:: nodes(:)
+        type(toml_object), allocatable :: nodes(:), temp_nodes(:)
         type(toml_object):: node
         integer(i32):: num_tokens, i, n_children, ind
         num_tokens = size(tokens, 1)
+        ! write(*,*) 'Allocating ', num_tokens, ' token nodes' 
         allocate(nodes(num_tokens))
 
         ind = 0
         i = 1
+        
         do while (i <= num_tokens)
+            ! write(*,*) 'TOKEN:', tokens(i)%type,' ', tokens(i)%key, ' ', tokens(i)%value
             select case(tokens(i)%type)
             case("blank")
                 i = i + 1
@@ -829,13 +834,35 @@ module TinyTOML
                 nodes(ind)%key = tokens(i)%key
                 nodes(ind)%value = tokens(i)%value
                 nodes(ind)%type = tokens(i)%type
-                nodes(ind)%children = no_children()
+                nodes(ind)%children =  no_children()
                 i = i + 1
             end select
         end do
 
-        nodes = nodes(1:ind)
+        ! APC Replace this with a better deep copy...
+        ! write(*,*) 'Size before copy: ', size(nodes)
+        ! write(*,*) 'Range of copy: ', ind
 
+        ! APC: at this point, the number of tokens read may not be equal to the number of nodes actually created, because some of
+        ! the tokens might belong to children (or, in principle, things that don't lead to the creation of nodes). TinyTOML trimmed
+        ! the number of nodes as follows:
+
+        ! TinyTOML:
+        ! nodes = nodes(1:ind)
+
+        ! APC: however, this leads to a runtime error on up-to-date gfortran. It seems this has trouble dealing with the unallocated
+        ! part of nodes(:) when nodes(:) is being copied on to itself.
+
+        ! APC: workaround: more pedantic copy. Not sure if this is the best way to go around the houses but it seems to work.
+        if (ind.lt.num_tokens) then
+          temp_nodes = nodes(1:ind)
+          deallocate(nodes)
+          nodes = temp_nodes
+          deallocate(temp_nodes)
+        endif
+
+        ! write(*,*) 'Size after copy: ', size(nodes)
+        ! write(*,*) '<<< tokens to parse out:', num_tokens, ind
     end function
 
     function parse_key_value_pairs(str, line_num) result(pairs)
