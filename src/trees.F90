@@ -46,6 +46,12 @@ program tree
   integer :: unit_num
   real    :: temp
 
+  ! Random sampling
+  real :: mphalo_max, mphalo_min = 0
+  real :: rand
+  integer, allocatable :: rand_seed(:)
+  integer :: seed_size
+ 
   ! Start a new output file every N trees
   integer :: ifile
   integer :: nfiles
@@ -86,6 +92,24 @@ program tree
   ! Set variables from command line
   read(arg_ntrees, '(I10)', IOSTAT=ierr) ntrees ! Number of trees
   read(arg_mphalo, *, IOSTAT=ierr) mphalo ! Halo mass at base of tree
+
+  if (found_mmax) then
+    read(arg_mmax, *, IOSTAT=ierr) mphalo_max ! Halo mass at base of tree
+
+    if (mphalo_max.lt.mphalo) then
+      write(*,*) 'Invalid upper limit for mass sampling: ', mphalo_max
+      stop
+    end if
+
+    ! APC: in this case we random-uniformly sample the halo masses over the range 
+    ! mphalo < M < mmax rather than using the same mass for each tree.
+    mphalo_min = mphalo
+    
+    if (found_switch_loguniform) then
+      mphalo_min = log10(mphalo)
+      mphalo_max = log10(mphalo_max)
+    endif
+  end if
 
   ! Set invalid defaults
   nlev  = -1
@@ -159,6 +183,12 @@ program tree
 
   ! Set initial random seed
   iseed0 = pa_runtime%iseed
+
+  ! APC: I think this is OK, since the tree generator is using its own RNG.
+  call random_seed(size=seed_size)
+  allocate(rand_seed(seed_size))
+  rand_seed(:) = iseed0
+  call random_seed(put=rand_seed)
 
   ! Set up the array of redshifts at which the tree is to be stored
   if (pa_output%have_aexp_list) then
@@ -291,6 +321,17 @@ program tree
       if (iter.eq.1) iseed0 = iseed0 - 19 ! Advance seed for new tree
       iseed = iseed0
 
+      ! APC: we're using the global RNG here, I think the tree generator uses
+      ! its own RNG...
+      if (found_mmax) then
+        call random_number(rand)  ! Generates rand in [0,1)
+        if (found_switch_loguniform) then
+          mphalo  = 10**(mphalo_min + (mphalo_max - mphalo_min) * rand)
+        else
+          mphalo  = mphalo_min + (mphalo_max - mphalo_min) * rand
+        end if
+      endif
+
       ! Allocate memory
       ! If needed, increase the amount of memory allocated
       call Memory(nhalo,nhalomax,ierr,nlev,mphalo,&
@@ -301,6 +342,7 @@ program tree
       MergerTree => MergerTree_Aux  ! Maps MergerTree to allocated 
 
       ! Build the tree
+      write(*,*) 'Making tree:', mphalo
       call make_tree(mphalo,ahalo,pa_output%mres,alev,nlev,&
         & iseed,split,sigmacdm, &
         & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)

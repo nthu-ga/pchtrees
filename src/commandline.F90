@@ -6,6 +6,7 @@ module Commandline
   character(len=64) :: arg_mphalo
   character(len=64) :: arg_ahalo
   character(len=64) :: arg_zmax
+  character(len=64) :: arg_mmax
   character(len=64) :: arg_nlev
 
   logical :: found_pf_path = .false.
@@ -16,6 +17,9 @@ module Commandline
   logical :: found_nlev    = .false.
   logical :: found_switch_defaults = .false.
   logical :: found_switch_verbose  = .false.
+
+  logical :: found_mmax = .false.
+  logical :: found_switch_loguniform  = .false.
 
   logical :: is_kw_pf_path = .false.
   logical :: is_kw_ntrees  = .false.
@@ -55,6 +59,13 @@ contains
             found_switch_verbose = .true.
             i = i + 1
           end if
+        case ('--loguniform')
+          ! Random sample uniformly in log10 mass
+          if (.not.found_switch_loguniform) then
+            found_switch_loguniform = .true.
+            i = i + 1
+          end if
+
         case ('--params')
           ! Parameter file path
           if (i + 1 <= nargs) then
@@ -120,6 +131,19 @@ contains
               stop
             end if
           end if
+        case ('--mmax')
+          ! Highest redshift in tree
+          if (i + 1 <= nargs) then
+            if (.not.found_mmax) then
+              call get_command_argument(i + 1, arg_mmax)
+              ! This argument can only be a keyword
+              found_mmax = .true.
+              i = i + 2
+            else
+              write(*,*) 'Argument given as keyword and positional: mmax'
+              stop
+            end if
+          end if
         case ('--nlev')
           ! Override nlev from parameter file
           if (i + 1 <= nargs) then
@@ -179,6 +203,8 @@ contains
       if (found_ahalo)           call write_kw_or_pos('ahalo (root expansion factor',      is_kw_ahalo)
       if (found_zmax)            call write_kw_or_pos('zmax (highest redshift in tree)',   is_kw_zmax)
       if (found_nlev)            call write_kw_or_pos('nlev (number of tree levels)',      is_kw_zmax)
+      
+      if (found_mmax)            call write_kw_or_pos('mmax (upper limit of mass sampling range)', .true.)
     end if
 
     if (.not.found_switch_defaults) then
@@ -220,6 +246,8 @@ contains
     write(*,*) 
     write(*,*) 'Options (keyword only):'
     write(*,*) '--nlev : number of levels in tree'
+    write(*,*) '--mmax : upper limit of mass sampling range'
+    write(*,*) '--loguniform : random uniform sampling in log10 mass'
     write(*,*) 
 
   end subroutine usage
