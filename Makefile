@@ -5,8 +5,8 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 RM := rm -f
 
 # Build options
-#BUILD_TYPE := OPT
-BUILD_TYPE:= DEVELOP
+BUILD_TYPE := OPT
+#BUILD_TYPE:= DEVELOP
 #BUILD_TYPE := DEBUG
 
 # Compiler
