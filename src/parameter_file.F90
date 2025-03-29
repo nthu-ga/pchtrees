@@ -134,10 +134,10 @@ contains
     integer, intent(in), optional :: dump_parameters_unit
     
     logical :: dump_parameters
-    integer :: dpu
+    integer :: dpu = UNIT_STDOUT
 
     ! integer :: fu, rc
-    logical :: file_exists, dump_only=.false.
+    logical :: file_exists, unit_open=.false., dump_with_no_pf=.false.
 
     type(toml_object) :: toml_content
     type(toml_object) :: section
@@ -147,26 +147,37 @@ contains
     integer :: temp_unit
     integer :: io_err
 
+    ! Write out parameters only if given a unit
     dump_parameters = present(dump_parameters_unit)
-    dpu = merge(dump_parameters_unit, 6, dump_parameters)
+    if (dump_parameters) then
+      inquire(unit=dump_parameters_unit, opened=unit_open)
+      if (.not.unit_open) then
+        write(*,*) "Parameter dump unit ", dump_parameters_unit, " is not open" 
+        stop
+      endif
+      dpu = dump_parameters_unit
+      ! write(stderr,*) "Will dump parameters to", dpu
+    endif
 
-    inquire (file=file_name_in, exist=file_exists)
-    if (.not. file_exists) then
-      if (dump_parameters) then
-        if (dump_parameters_unit.eq.6) then
-          dump_only = .true.
-        endif
+    ! Check the PF exists. If it doesn't, we must be dumping the defaults.
+    inquire(file=file_name_in, exist=file_exists)
+    if (.not.file_exists) then
+      if (dump_parameters) then     
+        dump_with_no_pf = .true.
       else
         write (stderr, '("Error: Parameter file ", a, " not found")') file_name_in
         stop
       endif
     end if
 
-    ! An ugly hack to write a dummy pf
-    if (dump_only) then
+    ! An ugly hack to write a dummy parameter file so that parse_file has something to parse. If we don't parse the file, the
+    ! default parameters don't get set, so we can't dump them. Urgh.
+
+    if (dump_with_no_pf) then
       ! Generate a unique temporary file name
       temp_filename = 'tmpfile.dat'
       open(newunit=temp_unit, file=temp_filename, status='new', action='readwrite')
+      ! Minimum valid pf, section headers only
       write(temp_unit, '(A)') '[runtime]' 
       write(temp_unit, '(A)') '[output]' 
       write(temp_unit, '(A)') '[cosmology]' 
@@ -186,7 +197,8 @@ contains
     ! Parse the TOML file
     toml_content = parse_file(file_name)
 
-    if (dump_only) then
+    ! Can remove the temp pf now
+    if (dump_with_no_pf) then
       io_err = unlink(temp_filename)
     endif
 
@@ -363,8 +375,12 @@ contains
     
     integer :: output_unit
   
-    ! Use provided unit, else default to stdout (unit 6)
-    output_unit = merge(unit, 6, present(unit))
+    ! Use provided unit, else default to stdout
+    if (present(unit)) then
+      output_unit = unit
+    else
+      output_unit = UNIT_STDOUT
+    endif
 
     select type(v)
     type is (integer)
