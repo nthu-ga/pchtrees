@@ -27,7 +27,7 @@ real function ran3(IDUM)
   if (IDUM.lt.0.or.IFF.eq.0) then
      IFF=1
      MJ=MSEED-iabs(IDUM)
-     MJ=mod(MJ,MBIG)	
+     MJ=mod(MJ,MBIG)
      if (MJ.lt.MZ) MJ=MJ+MBIG
      MA(55)=MJ
      MK=1
@@ -40,8 +40,8 @@ real function ran3(IDUM)
      end do
      do K=1,4
         do jran3=1,55
-	   MA(jran3)=MA(jran3)-MA(1+mod(jran3+30,55))
-	   if (MA(jran3).lt.MZ) MA(jran3)=MA(jran3)+MBIG
+          MA(jran3)=MA(jran3)-MA(1+mod(jran3+30,55))
+          if (MA(jran3).lt.MZ) MA(jran3)=MA(jran3)+MBIG
         end do
      end do
      INEXT=0
