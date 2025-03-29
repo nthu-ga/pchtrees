@@ -63,8 +63,16 @@ program tree
   integer :: N_min, N_max
 #endif
 
-  ! Parse the command line 
+  ! Parse the command line
   call read_command_line_args()
+
+  ! APC: very cautious test for an empty argument string
+  ! (obvious test for '' failed on mac)
+  if (arg_pf_path(1:1).eq.char(0)) then
+    arg_pf_path = ''
+  else
+    write(*,*) 'Parameters read from: ', trim(arg_pf_path)
+  end if
 
   ! Process the parameter file
   if (found_switch_defaults) then
