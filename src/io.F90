@@ -239,13 +239,13 @@ contains
 
     ! Write critical density at each output time
     do i=1,size(alev)
-      output_time_property = deltcrit(alev(i))
+      output_time_property(i) = deltcrit(alev(i))
     end do
     call write_1d_array_real(filename, '/OutputTimes/DeltaCrit', output_time_property)
 
     ! Write redshifts
     do i=1,size(alev)
-      output_time_property = (1.0/alev(i))-1.0
+      output_time_property(i) = (1.0/alev(i))-1.0
     end do
     call write_1d_array_real(filename, '/OutputTimes/Redshift', output_time_property)
 
