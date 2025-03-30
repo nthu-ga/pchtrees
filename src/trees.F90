@@ -313,6 +313,19 @@ program tree
   generate_trees: do itree=1,ntrees
     iter = 1   
 
+    ! Choose the mass for this tree
+
+    ! APC: we're using the global RNG here, I think the tree generator uses
+    ! its own RNG...
+    if (found_mmax) then
+      call random_number(rand)  ! Generates rand in [0,1)
+      if (found_switch_loguniform) then
+        mphalo  = 10**(mphalo_min + (mphalo_max - mphalo_min) * rand)
+      else
+        mphalo  = mphalo_min + (mphalo_max - mphalo_min) * rand
+      end if
+    endif
+
     ! If we run out of allocated memory, which is flagged
     ! by ierr=1 or ierr=2, then we do another iteration 
     ! with more allocated memory.
@@ -320,17 +333,6 @@ program tree
     build_tree: do while ((ierr.ne.0).or.(iter.eq.1))
       if (iter.eq.1) iseed0 = iseed0 - 19 ! Advance seed for new tree
       iseed = iseed0
-
-      ! APC: we're using the global RNG here, I think the tree generator uses
-      ! its own RNG...
-      if (found_mmax) then
-        call random_number(rand)  ! Generates rand in [0,1)
-        if (found_switch_loguniform) then
-          mphalo  = 10**(mphalo_min + (mphalo_max - mphalo_min) * rand)
-        else
-          mphalo  = mphalo_min + (mphalo_max - mphalo_min) * rand
-        end if
-      endif
 
       ! Allocate memory
       ! If needed, increase the amount of memory allocated
