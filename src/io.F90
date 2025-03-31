@@ -270,7 +270,7 @@ contains
     ! Create offsets
     tree_property(1) = 0
     do i=2,size(tree_lengths)
-      tree_property(i) = tree_lengths(i-1)
+      tree_property(i) = tree_property(i-1) + tree_lengths(i-1)
     end do
     call write_1d_array_integer(filename, '/TreeTable/StartOffset', tree_property)
 
