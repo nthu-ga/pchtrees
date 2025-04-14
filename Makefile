@@ -5,8 +5,8 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 RM := rm -f
 
 # Build options
-#BUILD_TYPE := OPT
-BUILD_TYPE:= DEVELOP
+BUILD_TYPE := OPT
+#BUILD_TYPE:= DEVELOP
 #BUILD_TYPE := DEBUG
 
 # Compiler
@@ -14,7 +14,7 @@ FC = gfortran
 COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
-#HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
+HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
 
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
