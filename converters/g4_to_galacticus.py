@@ -2,50 +2,22 @@ import numpy as np
 import h5py
 import argparse
 
-def add_attributes_to_group(group, attributes):
-    """
-    Adds attributes to a given HDF5 group from a dictionary.
+import h5py
+import argparse
 
-    Parameters:
-    group (h5py.Group): The HDF5 group to add attributes to.
-    attributes (dict): Dictionary of attribute names and values.
-    """
+def add_attributes_to_group(group, attributes):
     for key, value in attributes.items():
         group.attrs[key] = value
 
 def read_parameters_from_input(input_filename):
-    """
-    Reads attributes from the input file under the Parameters group.
-
-    Parameters:
-    input_filename (str): The name of the input HDF5 file.
-
-    Returns:
-    dict: Dictionary of attributes from the Parameters group.
-    """
     with h5py.File(input_filename, 'r') as input_file:
         params_group = input_file['/Parameters']
-        attributes = {}
-        
-        # Read all attributes in the /Parameters group
-        for attr_name, attr_value in params_group.attrs.items():
-            attributes[attr_name] = attr_value
-        
-        return attributes
+        return dict(params_group.attrs)
 
 def convert(input_filename, output_filename):
-    """
-    Creates a new HDF5 file and populates the cosmology, groupFinder, and simulation
-    groups using attributes read from the input file.
-
-    Parameters:
-    input_filename (str): The input HDF5 file to read attributes from.
-    output_filename (str): The output HDF5 file to create and populate.
-    """
     attributes = read_parameters_from_input(input_filename)
 
     with h5py.File(output_filename, 'w') as f:
-        # Set root-level attribute
         f.attrs['formatVersion'] = 2
 
         # Create required groups
@@ -59,42 +31,50 @@ def convert(input_filename, output_filename):
         f.create_group('forestIndex')
         f.create_group('units')
 
-        # Cosmology group attributes mapping from input file
-        cosmology_attrs = {
-            'HubbleParam': attributes.get('HubbleParam', None),
-            'OmegaMatter': attributes.get('Omega0', None),
-            'OmegaLambda': attributes.get('OmegaLambda', None),
-            'OmegaBaryon': attributes.get('OmegaBaryon', None),
-            'powerSpectrumIndex': 1.0,  # Assuming fixed value
-            'sigma_8': 0.9,              # Assuming fixed value
-            'transferFunction': "CAMB"   # Assuming fixed value
+        # Track attributes that have been used
+        used_attributes = set()
+
+        # Populate cosmology group
+        cosmology_mapping = {
+            'HubbleParam': 'HubbleParam',
+            'Omega0': 'OmegaMatter',
+            'OmegaLambda': 'OmegaLambda',
+            'OmegaBaryon': 'OmegaBaryon'
         }
+        cosmology_attrs = {}
+        for input_key, output_key in cosmology_mapping.items():
+            if input_key in attributes:
+                cosmology_attrs[output_key] = attributes[input_key]
+                used_attributes.add(input_key)
+        # Add hardcoded values
+        cosmology_attrs.update({
+            'powerSpectrumIndex': 1.0,
+            'sigma_8': 0.9,
+            'transferFunction': "CAMB"
+        })
         add_attributes_to_group(cosmology, cosmology_attrs)
 
-        # GroupFinder group attributes mapping from input file
+        # Populate groupFinder group
         group_finder.attrs['COMMENT'] = "Group finder parameters."
         group_finder_attrs = {
-            'code': "SUBFIND",  # Assuming fixed value
-            'linkingLength': 0.2,  # Assuming fixed value
-            'minimumParticleNumber': 20  # Assuming fixed value
+            'code': "SUBFIND",
+            'linkingLength': 0.2,
+            'minimumParticleNumber': 20
         }
         add_attributes_to_group(group_finder, group_finder_attrs)
 
-        # Simulation group attributes
+        # Populate simulation group
         simulation.attrs['COMMENT'] = "Simulation parameters."
-        
-        # Any attribute that is not in cosmology or groupFinder is stored in simulation
-        simulation_attrs = {}
+        simulation_attrs = {'code': 'Gadget-4'}  # hardcoded
+
         for attr_name, attr_value in attributes.items():
+            if attr_name in used_attributes:
+                continue  # skip already used attributes
             if attr_name == 'BoxSize':
-                # Special treatment for 'BoxSize' to store it as 'boxSize'
-                simulation_attrs['boxSize'] = attr_value
-            elif attr_name == 'code':
-                # Special treatment for 'code' to store it as 'Gadget-4'
-                simulation_attrs['code'] = "Gadget-4"
-            elif attr_name not in cosmology_attrs and attr_name not in group_finder_attrs:
-                simulation_attrs[attr_name] = attr_value
-        
+                simulation_attrs['boxSize'] = attr_value  # special case
+            else:
+                simulation_attrs[attr_name] = attr_value  # everything else
+
         add_attributes_to_group(simulation, simulation_attrs)
 
 if __name__ == "__main__":
@@ -104,4 +84,3 @@ if __name__ == "__main__":
     args = parser.parse_args()
 
     convert(args.input_filename, args.output_filename)
-
