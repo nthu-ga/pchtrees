@@ -69,6 +69,9 @@ program tree
   integer :: N_min, N_max
 #endif
 
+  logical :: TASK_OUTPUT_TREES = .true.
+  logical :: TASK_PROCESS_FIRST_ORDER_PROGENITORS = .false.
+
   ! Parse the command line
   call read_command_line_args()
 
@@ -92,6 +95,18 @@ program tree
   ! Set variables from command line
   read(arg_ntrees, '(I10)', IOSTAT=ierr) ntrees ! Number of trees
   read(arg_mphalo, *, IOSTAT=ierr) mphalo ! Halo mass at base of tree
+
+  if (found_task_no_output_trees) then
+    write(*,*) 'Task: DO NOT OUTPUT TREES'
+    TASK_OUTPUT_TREES = .false.
+  else
+    write(*,*) 'Task: OUTPUT TREES'
+  endif
+
+  if (found_task_process_first_order_progenitors) then
+    write(*,*) 'Task: PROCESS FIRST ORDER TREES'
+    TASK_PROCESS_FIRST_ORDER_PROGENITORS = .true.
+  endif
 
   if (found_mmax) then
     read(arg_mmax, *, IOSTAT=ierr) mphalo_max ! Halo mass at base of tree
@@ -133,11 +148,13 @@ program tree
   endif 
 
   ! Set up output file type options
-  if (pa_output%output_format.eq.OUTPUT_HDF5) then
-    file_ext = ".hdf5"
-  elseif (pa_output%output_format.eq.OUTPUT_JET) then
-    file_ext = '.txt'
-  endif  
+  if (TASK_OUTPUT_TREES) then
+    if (pa_output%output_format.eq.OUTPUT_HDF5) then
+      file_ext = ".hdf5"
+    elseif (pa_output%output_format.eq.OUTPUT_JET) then
+      file_ext = '.txt'
+    endif  
+  endif
 
   write(*,'(1x,a,i10)')   'Trees to generate                : ', ntrees
   write(*,'(1x,a,g10.3)') 'Target halo mass (Msol)          : ', mphalo
@@ -294,20 +311,23 @@ program tree
   ! APC FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
-  if (pa_output%output_format.eq.OUTPUT_HDF5) then
+
+  if (TASK_OUTPUT_TREES) then
+    if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
-    call create_hdf5_output(file_path, N_min, N_max) 
+      call create_hdf5_output(file_path, N_min, N_max) 
 #else
-    if (found_switch_verbose) then
-      write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
-    end if
+      if (found_switch_verbose) then
+        write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
+      end if
 #endif
-  else if (pa_output%output_format.eq.OUTPUT_JET) then
-    call create_jet_output(file_path)
-  else
-    write(*,*) 'FATAL'
-    stop
-  end if
+    else if (pa_output%output_format.eq.OUTPUT_JET) then
+      call create_jet_output(file_path)
+    else
+      write(*,*) 'FATAL'
+      stop
+    end if
+  endif
 
   ! Start generating trees
   generate_trees: do itree=1,ntrees
@@ -355,7 +375,18 @@ program tree
     ! Write the tree to active output file
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
+  
+    ! Special functions to derive properties from tres
+    !if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
+    !  process_first_order_progenitors(tree)
+    !endif
 
+    ! Only proceed past here if we're writing tree output
+    ! Otherwise, continue with the next iteration.
+    if (.not.TASK_OUTPUT_TREES) then
+      cycle
+    endif
+    
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
       call write_tree_hdf5(file_path, itree-1, this_node, &
@@ -434,30 +465,32 @@ program tree
 
   end do generate_trees
 
-  ! The number of files we have written
-  if (.not.(ifile.eq.nfiles)) then
-    write(*,*) 'FATAL: mismatch in expected number of files written'
-    stop
-  end if
+  if (TASK_OUTPUT_TREES) then
+    ! The number of files we have written
+    if (.not.(ifile.eq.nfiles)) then
+      write(*,*) 'FATAL: mismatch in expected number of files written'
+      stop
+    end if
 
-  ! Write the trees table
-  ! all write_tree_table(pa_output%file_path, trees_nhalos)
+    ! Write the trees table
+    ! all write_tree_table(pa_output%file_path, trees_nhalos)
   
 #ifdef WITH_HDF5
-  ! Loop over each output file and write the header, which needs information
-  ! about all the files.
+    ! Loop over each output file and write the header, which needs information
+    ! about all the files.
 
-  write(*,*) 'Writing output file headers...'
-  do ifile=1,nfiles
-    write(file_path, '(A, A, I3.3, A)') pa_output%file_base, '.', ifile, ".hdf5"
-    write(*,*) trim(file_path)
+    write(*,*) 'Writing output file headers...'
+    do ifile=1,nfiles
+      write(file_path, '(A, A, I3.3, A)') pa_output%file_base, '.', ifile, ".hdf5"
+      write(*,*) trim(file_path)
 
-    ! Write the header
-    call write_header(file_path, '/Header', nlev-1, & 
-      & nhalos_per_file(ifile), sum(trees_nhalos), &
-      & ntrees_per_file(ifile), ntrees, nfiles)
-  end do
+      ! Write the header
+      call write_header(file_path, '/Header', nlev-1, & 
+        & nhalos_per_file(ifile), sum(trees_nhalos), &
+        & ntrees_per_file(ifile), ntrees, nfiles)
+    end do
 #endif
+  endif 
 
   deallocate(nhalos_per_file)
   deallocate(ntrees_per_file)
