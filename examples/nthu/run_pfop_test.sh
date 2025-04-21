@@ -1,0 +1,4 @@
+#!/bin/bash
+
+# All paths relative to executable
+./pchtrees --ntrees 200 --mphalo 1e12  --params ./basic_test.toml --zmax 30.0 --no-output-trees --process-first-order-progenitors
