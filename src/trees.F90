@@ -376,10 +376,10 @@ program tree
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
   
-    ! Special functions to derive properties from tres
-    !if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
-    !  process_first_order_progenitors(tree)
-    !endif
+    ! Special functions to derive properties from trees
+    if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
+      call process_first_order_progenitors(This_Node)
+    endif
 
     ! Only proceed past here if we're writing tree output
     ! Otherwise, continue with the next iteration.
@@ -505,6 +505,35 @@ program tree
 #endif
 
 contains
+
+  subroutine process_first_order_progenitors(root_node)
+    implicit none
+    type (TreeNode), pointer :: root_node, This_Node, child_node
+    
+    integer :: n_merge
+
+    This_Node => root_node
+    do while (associated(This_Node))
+      n_merge = 0
+      if (associated(This_Node%child)) then
+        child_node => This_Node%child
+        do while (associated(child_node%sibling))
+          n_merge = n_merge + 1
+          child_node => child_node%sibling
+        end do
+      endif
+      
+      ! Output
+      write(*,*) This_Node%mhalo, n_merge
+
+      ! Move along main branch
+      if (associated(This_Node%child)) then
+        This_Node => This_Node%child 
+      else
+        This_Node => null()
+      endif
+    end do
+  end subroutine process_first_order_progenitors
 
   subroutine insertion_sort_desc(arr, n)
   ! A ChatGPT descending order insertion sort...
