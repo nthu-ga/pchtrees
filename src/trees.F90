@@ -71,11 +71,16 @@ program tree
 #endif
 
   logical :: TASK_OUTPUT_TREES = .true.
-  
+ 
+  ! Special task
   logical :: TASK_PROCESS_FIRST_ORDER_PROGENITORS = .false.
-  character(len=1024)  :: pfop_filename
+  character(len=1024)  :: file_path_pfop
+  integer :: nfop
+  integer, allocatable :: trees_nfop(:)
+  real, allocatable    :: trees_mroot(:)
+  real, parameter      :: FOP_MASS_LIMIT = 1e10
 
-  pfop_filename = './pfop.hdf5'
+  file_path_pfop = './pfop.hdf5'
 
   ! Parse the command line
   call read_command_line_args()
@@ -337,7 +342,9 @@ program tree
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     n_min_pfop = 100
     n_max_pfop = 1e7
-    call create_hdf5_output_process_first_order_progenitors(pfop_filename,n_min_pfop,n_max_pfop)
+    call create_hdf5_output_process_first_order_progenitors(file_path_pfop,n_min_pfop,n_max_pfop)
+    allocate(trees_nfop(ntrees), source=0)
+    allocate(trees_mroot(ntrees), source=0.0)
   endif
 
   ! Start generating trees
@@ -389,7 +396,10 @@ program tree
   
     ! Special functions to derive properties from trees
     if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
-      call process_first_order_progenitors(pfop_filename, itree-1, This_Node)
+      ! This sets nfop
+      call process_first_order_progenitors(file_path_pfop, itree-1, This_Node, FOP_MASS_LIMIT, nfop)
+      trees_nfop(itree) = nfop
+      trees_mroot(itree) = This_Node%mhalo
     endif
 
     ! Only proceed past here if we're writing tree output
@@ -476,6 +486,16 @@ program tree
 
   end do generate_trees
 
+  if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
+    ! Write the header
+    call write_header(file_path_pfop, '/Header', nlev-1, & 
+      & sum(trees_nfop), sum(trees_nfop), &
+      & ntrees, ntrees, 1)
+
+    ! Write the per-tree data
+    call write_tree_table_process_first_order_progenitors(file_path_pfop, trees_nfop, trees_mroot)
+  endif
+
   if (TASK_OUTPUT_TREES) then
     ! The number of files we have written
     if (.not.(ifile.eq.nfiles)) then
@@ -517,11 +537,14 @@ program tree
 
 contains
 
-  subroutine process_first_order_progenitors(filename, tree_id, root_node)
+  subroutine process_first_order_progenitors(filename, tree_id, root_node, fop_mass_limit, &
+      & nfop)
     implicit none
     character(len=*), intent(IN) :: filename
     type (TreeNode), pointer :: root_node, This_Node, child_node
     integer, intent(IN) :: tree_id
+    real,    intent(IN) :: fop_mass_limit
+    integer, intent(OUT) :: nfop
 
     integer :: iprog
     integer :: n_merge
@@ -539,22 +562,23 @@ contains
     iprog = 0
 
     This_Node => root_node
-    do while (associated(This_Node))
+    main_branch: do while (associated(This_Node))
       n_merge = 0
-      if (associated(This_Node%child)) then
+      has_children: if (associated(This_Node%child)) then
         child_node => This_Node%child
-        do while (associated(child_node))
-          iprog = iprog + 1
+        children: do while (associated(child_node))
+          above_mass_limit: if (child_node%mhalo.ge.fop_mass_limit) then 
+            iprog = iprog + 1
+            if (iprog.eq.GUESS_NPROG) then
+              write(*,*) 'FATAL: increase GUESS_NPROG!'
+              STOP
+            endif
 
-          if (iprog.eq.GUESS_NPROG) then
-            write(*,*) 'FATAL: increase GUESS_NPROG!'
-            STOP
-          endif
-
-          ! Store properties of first level progenitor
-          mprog(iprog) = child_node%mhalo
-          mhost(iprog) = This_Node%mhalo
-          zprog(iprog) = 1.0/alev(This_node%jlevel)
+            ! Store properties of first level progenitor
+            mprog(iprog) = child_node%mhalo
+            mhost(iprog) = This_Node%mhalo
+            zprog(iprog) = 1.0/alev(This_node%jlevel) - 1
+          endif above_mass_limit 
 
           ! Move to sibling
           if (associated(child_node%sibling)) then
@@ -562,8 +586,8 @@ contains
           else
             child_node => null()
           endif
-        end do
-      endif
+        end do children
+      endif has_children
       
       ! Move along main branch
       if (associated(This_Node%child)) then
@@ -571,9 +595,10 @@ contains
       else
         This_Node => null()
       endif
-    end do
+    end do main_branch
 
     ! Output
+    nfop = iprog
     call write_pfop_hdf5(filename, tree_id, mprog(1:iprog), mhost(1:iprog), zprog(1:iprog))
 
     ! In principle this memory could be re-used...

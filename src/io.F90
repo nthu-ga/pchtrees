@@ -268,6 +268,40 @@ contains
   end subroutine create_hdf5_output_process_first_order_progenitors
 
   ! ############################################################
+  subroutine write_tree_table_process_first_order_progenitors(filename, tree_nfop, tree_mroot)
+    implicit none
+    
+    character(len=*), intent(in) :: filename
+    integer, dimension(:), intent(in) :: tree_nfop
+    real, dimension(:),    intent(in) :: tree_mroot
+
+    integer, allocatable :: tree_property(:)
+    integer :: i
+
+    call write_1d_array_integer(filename, '/TreeTable/NFirstOrderProg', tree_nfop)
+    call write_1d_array_real(filename, '/TreeTable/RootMass', tree_mroot)
+
+    allocate(tree_property(size(tree_nfop)))
+
+    ! Create offsets
+    tree_property(1) = 0
+    do i=2,size(tree_nfop)
+      tree_property(i) = tree_property(i-1) + tree_nfop(i-1)
+    end do
+    call write_1d_array_integer(filename, '/TreeTable/StartOffset', tree_property)
+
+    ! Create tree ids
+    do i=1,size(tree_nfop)
+      tree_property(i) = i - 1 ! O-based 
+    end do
+    call write_1d_array_integer(filename, '/TreeTable/TreeID', tree_property)
+
+    deallocate(tree_property)
+
+  end subroutine write_tree_table_process_first_order_progenitors
+
+
+  ! ############################################################
   subroutine write_output_times(filename, alev)
     implicit none
     
