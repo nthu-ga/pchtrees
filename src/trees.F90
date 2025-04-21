@@ -64,13 +64,18 @@ program tree
 #ifdef WITH_HDF5
   ! HDF5 output
   integer(hsize_t) :: N_min, N_max
+  integer(hsize_t) :: N_min_pfop, N_max_pfop
   integer :: hdferr
 #else
   integer :: N_min, N_max
 #endif
 
   logical :: TASK_OUTPUT_TREES = .true.
+  
   logical :: TASK_PROCESS_FIRST_ORDER_PROGENITORS = .false.
+  character(len=1024)  :: pfop_filename
+
+  pfop_filename = './pfop.hdf5'
 
   ! Parse the command line
   call read_command_line_args()
@@ -329,6 +334,12 @@ program tree
     end if
   endif
 
+  if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
+    n_min_pfop = 100
+    n_max_pfop = 1e7
+    call create_hdf5_output_process_first_order_progenitors(pfop_filename,n_min_pfop,n_max_pfop)
+  endif
+
   ! Start generating trees
   generate_trees: do itree=1,ntrees
     iter = 1   
@@ -378,7 +389,7 @@ program tree
   
     ! Special functions to derive properties from trees
     if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
-      call process_first_order_progenitors(This_Node)
+      call process_first_order_progenitors(pfop_filename, itree-1, This_Node)
     endif
 
     ! Only proceed past here if we're writing tree output
@@ -506,26 +517,54 @@ program tree
 
 contains
 
-  subroutine process_first_order_progenitors(root_node)
+  subroutine process_first_order_progenitors(filename, tree_id, root_node)
     implicit none
+    character(len=*), intent(IN) :: filename
     type (TreeNode), pointer :: root_node, This_Node, child_node
-    
+    integer, intent(IN) :: tree_id
+
+    integer :: iprog
     integer :: n_merge
+
+    real, allocatable :: mprog(:), zprog(:), mhost(:)
+
+    integer, parameter :: GUESS_NPROG = 1e6
+
+    allocate(mprog(GUESS_NPROG), source=-1.0)
+    allocate(mhost(GUESS_NPROG), source=-1.0)
+    allocate(zprog(GUESS_NPROG), source=-1.0)
+
+    ! This will also be used to count the progenitor nodes
+    ! so start at zero
+    iprog = 0
 
     This_Node => root_node
     do while (associated(This_Node))
       n_merge = 0
       if (associated(This_Node%child)) then
         child_node => This_Node%child
-        do while (associated(child_node%sibling))
-          n_merge = n_merge + 1
-          child_node => child_node%sibling
+        do while (associated(child_node))
+          iprog = iprog + 1
+
+          if (iprog.eq.GUESS_NPROG) then
+            write(*,*) 'FATAL: increase GUESS_NPROG!'
+            STOP
+          endif
+
+          ! Store properties of first level progenitor
+          mprog(iprog) = child_node%mhalo
+          mhost(iprog) = This_Node%mhalo
+          zprog(iprog) = 1.0/alev(This_node%jlevel)
+
+          ! Move to sibling
+          if (associated(child_node%sibling)) then
+            child_node => child_node%sibling
+          else
+            child_node => null()
+          endif
         end do
       endif
       
-      ! Output
-      write(*,*) This_Node%mhalo, n_merge
-
       ! Move along main branch
       if (associated(This_Node%child)) then
         This_Node => This_Node%child 
@@ -533,6 +572,15 @@ contains
         This_Node => null()
       endif
     end do
+
+    ! Output
+    call write_pfop_hdf5(filename, tree_id, mprog(1:iprog), mhost(1:iprog), zprog(1:iprog))
+
+    ! In principle this memory could be re-used...
+    deallocate(mprog)
+    deallocate(mhost)
+    deallocate(zprog)
+
   end subroutine process_first_order_progenitors
 
   subroutine insertion_sort_desc(arr, n)

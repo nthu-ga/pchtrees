@@ -28,6 +28,12 @@ module IO
   character(*), parameter :: DSET_TREE_SNAPNUM = "/TreeHalos/SnapNum"
   character(*), parameter :: DSET_TREE_GROUP_M_CRIT200 = "/TreeHalos/Group_M_Crit200"
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
+  
+  ! For PFOP
+  character(*), parameter :: DSET_PFOP_PROG_MASS = "/Progenitors/ProgenitorMass"
+  character(*), parameter :: DSET_PFOP_PROG_ZRED = "/Progenitors/ProgenitorZred"
+  character(*), parameter :: DSET_PFOP_HOST_MASS = "/Progenitors/HostMass"
+  character(*), parameter :: DSET_PFOP_TREE_ID   = "/Progenitors/TreeID"
 #endif
 
 contains
@@ -222,6 +228,45 @@ contains
   
   end subroutine create_hdf5_output
   
+  ! ############################################################ 
+  subroutine create_hdf5_output_process_first_order_progenitors(filename, N_min, N_max)
+    !
+    ! Set up the output file
+    ! Output file must not exist (no automatic overwrite)
+    !
+    implicit none
+    character(len=*), intent(in) :: filename
+    integer(hsize_t), intent(in) :: N_min, N_max  ! Estimated min/max append size
+
+    logical :: file_exists
+    
+    integer(hid_t) :: file_id
+    integer(hsize_t) :: dataset_type
+    integer :: hdferr
+   
+    ! Open file
+    inquire(file=trim(filename), exist=file_exists)
+    if (file_exists) then
+      write(*,*) 'Remove existing output file: ', trim(filename)
+      stop
+    endif 
+    call h5fcreate_f(trim(filename), H5F_ACC_TRUNC_F, file_id, hdferr)
+    call check_hdf5_err(hdferr,"Error creating file",trim(filename))
+ 
+    dataset_type = H5T_NATIVE_INTEGER
+    call create_extensible_dataset(filename, DSET_PFOP_TREE_ID,   dataset_type, &
+      & N_min, N_max, hdferr)
+
+    dataset_type = H5T_NATIVE_REAL
+    call create_extensible_dataset(filename, DSET_PFOP_PROG_MASS, dataset_type, &
+      & N_min, N_max, hdferr)
+    call create_extensible_dataset(filename, DSET_PFOP_HOST_MASS, dataset_type, &
+      & N_min, N_max, hdferr)
+    call create_extensible_dataset(filename, DSET_PFOP_PROG_ZRED, dataset_type, &
+      & N_min, N_max, hdferr)
+ 
+  end subroutine create_hdf5_output_process_first_order_progenitors
+
   ! ############################################################
   subroutine write_output_times(filename, alev)
     implicit none
@@ -405,6 +450,31 @@ contains
     call h5aclose_f(attr_id, hdferr)
     call h5sclose_f(space_id, hdferr)
   end subroutine write_group_attr
+  
+  
+  ! ############################################################
+  subroutine write_pfop_hdf5(filename, tree_id, mprog, mhost, zred)
+    implicit none
+    character(len=*), intent(IN) :: filename
+    integer, intent(IN) :: tree_id
+    real, intent(IN) :: mprog(:), mhost(:), zred(:)
+    
+    integer :: hdferr
+
+    integer :: nnodes
+    integer, allocatable :: tree_id_array(:)
+    nnodes = SIZE(mprog)
+    
+    call append_to_dataset(filename, DSET_PFOP_PROG_MASS, mprog, hdferr)
+    call append_to_dataset(filename, DSET_PFOP_HOST_MASS, mhost, hdferr)
+    call append_to_dataset(filename, DSET_PFOP_PROG_ZRED, zred,  hdferr)
+
+    allocate(tree_id_array(nnodes))
+    tree_id_array(:) = tree_id
+    call append_to_dataset(filename, DSET_PFOP_TREE_ID, tree_id_array, hdferr)
+    deallocate(tree_id_array)
+
+  end subroutine write_pfop_hdf5
 
   ! ############################################################
   subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
