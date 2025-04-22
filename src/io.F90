@@ -30,10 +30,12 @@ module IO
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
   
   ! For PFOP
-  character(*), parameter :: DSET_PFOP_PROG_MASS = "/Progenitors/ProgenitorMass"
-  character(*), parameter :: DSET_PFOP_PROG_ZRED = "/Progenitors/ProgenitorZred"
-  character(*), parameter :: DSET_PFOP_HOST_MASS = "/Progenitors/HostMass"
-  character(*), parameter :: DSET_PFOP_TREE_ID   = "/Progenitors/TreeID"
+  character(*), parameter :: DSET_PFOP_PROG_MASS   = "/Progenitors/ProgenitorMass"
+  character(*), parameter :: DSET_PFOP_PROG_ZRED   = "/Progenitors/ProgenitorZred"
+  character(*), parameter :: DSET_PFOP_HOST_MASS   = "/Progenitors/HostMass"
+  character(*), parameter :: DSET_PFOP_MERGED_MASS = "/Progenitors/MergedMass"
+  character(*), parameter :: DSET_PFOP_MERGED_ZRED = "/Progenitors/MergedZred"
+  character(*), parameter :: DSET_PFOP_TREE_ID     = "/Progenitors/TreeID"
 #endif
 
 contains
@@ -254,18 +256,23 @@ contains
     call check_hdf5_err(hdferr,"Error creating file",trim(filename))
  
     dataset_type = H5T_NATIVE_INTEGER
-    call create_extensible_dataset(filename, DSET_PFOP_TREE_ID,   dataset_type, &
+    call create_extensible_dataset(filename, DSET_PFOP_TREE_ID,     dataset_type, &
       & N_min, N_max, hdferr)
 
     dataset_type = H5T_NATIVE_REAL
-    call create_extensible_dataset(filename, DSET_PFOP_PROG_MASS, dataset_type, &
+    call create_extensible_dataset(filename, DSET_PFOP_PROG_MASS,   dataset_type, &
       & N_min, N_max, hdferr)
-    call create_extensible_dataset(filename, DSET_PFOP_HOST_MASS, dataset_type, &
+    call create_extensible_dataset(filename, DSET_PFOP_HOST_MASS,   dataset_type, &
       & N_min, N_max, hdferr)
-    call create_extensible_dataset(filename, DSET_PFOP_PROG_ZRED, dataset_type, &
+    call create_extensible_dataset(filename, DSET_PFOP_PROG_ZRED,   dataset_type, &
       & N_min, N_max, hdferr)
- 
+    call create_extensible_dataset(filename, DSET_PFOP_MERGED_MASS, dataset_type, &
+      & N_min, N_max, hdferr)
+    call create_extensible_dataset(filename, DSET_PFOP_MERGED_ZRED, dataset_type, &
+      & N_min, N_max, hdferr)
+  
   end subroutine create_hdf5_output_process_first_order_progenitors
+
 
   ! ############################################################
   subroutine write_tree_table_process_first_order_progenitors(filename, tree_nfop, tree_mroot)
@@ -297,7 +304,6 @@ contains
     call write_1d_array_integer(filename, '/TreeTable/TreeID', tree_property)
 
     deallocate(tree_property)
-
   end subroutine write_tree_table_process_first_order_progenitors
 
 
@@ -487,11 +493,12 @@ contains
   
   
   ! ############################################################
-  subroutine write_pfop_hdf5(filename, tree_id, mprog, mhost, zred)
+  subroutine write_pfop_hdf5(filename, tree_id,                  &
+      &                      mprog, mhost, zred, mmerged, zmerged)
     implicit none
     character(len=*), intent(IN) :: filename
     integer, intent(IN) :: tree_id
-    real, intent(IN) :: mprog(:), mhost(:), zred(:)
+    real, intent(IN) :: mprog(:), mhost(:), zred(:), mmerged(:), zmerged(:)
     
     integer :: hdferr
 
@@ -499,9 +506,11 @@ contains
     integer, allocatable :: tree_id_array(:)
     nnodes = SIZE(mprog)
     
-    call append_to_dataset(filename, DSET_PFOP_PROG_MASS, mprog, hdferr)
-    call append_to_dataset(filename, DSET_PFOP_HOST_MASS, mhost, hdferr)
-    call append_to_dataset(filename, DSET_PFOP_PROG_ZRED, zred,  hdferr)
+    call append_to_dataset(filename, DSET_PFOP_PROG_MASS,   mprog,    hdferr)
+    call append_to_dataset(filename, DSET_PFOP_HOST_MASS,   mhost,    hdferr)
+    call append_to_dataset(filename, DSET_PFOP_PROG_ZRED,   zred,     hdferr)
+    call append_to_dataset(filename, DSET_PFOP_MERGED_MASS, mmerged,  hdferr)
+    call append_to_dataset(filename, DSET_PFOP_MERGED_ZRED, zmerged,  hdferr)
 
     allocate(tree_id_array(nnodes))
     tree_id_array(:) = tree_id

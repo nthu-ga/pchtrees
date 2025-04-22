@@ -541,7 +541,7 @@ contains
       & nfop)
     implicit none
     character(len=*), intent(IN) :: filename
-    type (TreeNode), pointer :: root_node, This_Node, child_node
+    type (TreeNode), pointer :: root_node, This_Node, child_node, sibling_node
     integer, intent(IN) :: tree_id
     real,    intent(IN) :: fop_mass_limit
     integer, intent(OUT) :: nfop
@@ -549,25 +549,39 @@ contains
     integer :: iprog
     integer :: n_merge
 
-    real, allocatable :: mprog(:), zprog(:), mhost(:)
+    real, allocatable :: mprog(:), zprog(:), mhost(:), mmerged(:), zmerged(:)
 
     integer, parameter :: GUESS_NPROG = 1e6
 
-    allocate(mprog(GUESS_NPROG), source=-1.0)
-    allocate(mhost(GUESS_NPROG), source=-1.0)
-    allocate(zprog(GUESS_NPROG), source=-1.0)
+    allocate(mprog(GUESS_NPROG),   source=-1.0)
+    allocate(mhost(GUESS_NPROG),   source=-1.0)
+    allocate(zprog(GUESS_NPROG),   source=-1.0)
+    allocate(mmerged(GUESS_NPROG), source=-1.0)
+    allocate(zmerged(GUESS_NPROG), source=-1.0)
 
     ! This will also be used to count the progenitor nodes
     ! so start at zero
     iprog = 0
 
+    ! Move along main branch
     This_Node => root_node
     main_branch: do while (associated(This_Node))
       n_merge = 0
+      
+      ! Reset working pointers for safety
+      child_node   => null()
+      sibling_node => null()
+
+      ! Loop over child nodes and record mergers
       has_children: if (associated(This_Node%child)) then
         child_node => This_Node%child
-        children: do while (associated(child_node))
-          above_mass_limit: if (child_node%mhalo.ge.fop_mass_limit) then 
+        
+        if (associated(child_node%sibling)) then
+          sibling_node => child_node%sibling
+        endif
+
+        siblings: do while (associated(sibling_node))
+          above_mass_limit: if (sibling_node%mhalo.ge.fop_mass_limit) then 
             iprog = iprog + 1
             if (iprog.eq.GUESS_NPROG) then
               write(*,*) 'FATAL: increase GUESS_NPROG!'
@@ -575,23 +589,25 @@ contains
             endif
 
             ! Store properties of first level progenitor
-            mprog(iprog) = child_node%mhalo
-            mhost(iprog) = This_Node%mhalo
-            zprog(iprog) = 1.0/alev(This_node%jlevel) - 1
+            mprog(iprog)   = sibling_node%mhalo
+            mhost(iprog)   = child_node%mhalo
+            zprog(iprog)   = 1.0/alev(child_node%jlevel) - 1
+            mmerged(iprog) = This_Node%mhalo
+            zmerged(iprog) = 1.0/alev(this_node%jlevel) - 1
           endif above_mass_limit 
 
           ! Move to sibling
-          if (associated(child_node%sibling)) then
-            child_node => child_node%sibling
+          if (associated(sibling_node%sibling)) then
+            sibling_node => sibling_node%sibling
           else
-            child_node => null()
+            sibling_node => null()
           endif
-        end do children
+        end do siblings
       endif has_children
       
       ! Move along main branch
-      if (associated(This_Node%child)) then
-        This_Node => This_Node%child 
+      if (associated(child_node)) then
+        This_Node => child_node
       else
         This_Node => null()
       endif
@@ -599,12 +615,14 @@ contains
 
     ! Output
     nfop = iprog
-    call write_pfop_hdf5(filename, tree_id, mprog(1:iprog), mhost(1:iprog), zprog(1:iprog))
-
+    call write_pfop_hdf5(filename, tree_id, & 
+      &  mprog(1:iprog), mhost(1:iprog), zprog(1:iprog), mmerged(1:iprog), zmerged(1:iprog))
     ! In principle this memory could be re-used...
     deallocate(mprog)
     deallocate(mhost)
     deallocate(zprog)
+    deallocate(mmerged)
+    deallocate(zmerged)
 
   end subroutine process_first_order_progenitors
 
