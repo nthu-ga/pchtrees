@@ -74,13 +74,12 @@ program tree
  
   ! Special task
   logical :: TASK_PROCESS_FIRST_ORDER_PROGENITORS = .false.
+ 
   character(len=1024)  :: file_path_pfop
   integer :: nfop
   integer, allocatable :: trees_nfop(:)
   real, allocatable    :: trees_mroot(:)
-  real, parameter      :: FOP_MASS_LIMIT = 1e10
-
-  file_path_pfop = './pfop.hdf5'
+  real                 :: fop_mass_limit
 
   ! Parse the command line
   call read_command_line_args()
@@ -115,7 +114,22 @@ program tree
 
   if (found_task_process_first_order_progenitors) then
     write(*,*) 'Task: PROCESS FIRST ORDER TREES'
-    TASK_PROCESS_FIRST_ORDER_PROGENITORS = .true.
+    if (pa_pfop%have_parameters) then 
+      TASK_PROCESS_FIRST_ORDER_PROGENITORS = .true.
+      if (len(pa_pfop%file_path).gt.0) then
+        write(file_path_pfop, '(A, A)') trim(pa_pfop%file_path), '.hdf5'
+      else
+        file_path_pfop = './pfop.hdf5'
+      endif
+      fop_mass_limit = pa_pfop%mass_limit
+      write(*,*) '  File path  : ', trim(file_path_pfop)
+      write(*,*) '  Mass limit : ', fop_mass_limit
+      write(*,*)
+    else
+      write(*,*) "FATAL: requested processing of first order progenitors"
+      write(*,*) "but missing a [pfop] section in the parameter file" 
+      stop
+    endif
   endif
 
   if (found_mmax) then
@@ -342,7 +356,9 @@ program tree
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     n_min_pfop = 100
     n_max_pfop = 1e7
-    call create_hdf5_output_process_first_order_progenitors(file_path_pfop,n_min_pfop,n_max_pfop)
+    call create_hdf5_output_process_first_order_progenitors(file_path_pfop,n_min_pfop,n_max_pfop,& 
+      &                                                     INT(nlev,   kind=hsize_t),           &
+      &                                                     INT(ntrees, kind=hsize_t))
     allocate(trees_nfop(ntrees), source=0)
     allocate(trees_mroot(ntrees), source=0.0)
   endif
@@ -397,7 +413,7 @@ program tree
     ! Special functions to derive properties from trees
     if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
       ! This sets nfop
-      call process_first_order_progenitors(file_path_pfop, itree-1, This_Node, FOP_MASS_LIMIT, nfop)
+      call process_first_order_progenitors(file_path_pfop, itree-1, This_Node, FOP_MASS_LIMIT, nlev, nfop)
       trees_nfop(itree) = nfop
       trees_mroot(itree) = This_Node%mhalo
     endif
@@ -537,19 +553,20 @@ program tree
 
 contains
 
-  subroutine process_first_order_progenitors(filename, tree_id, root_node, fop_mass_limit, &
+  subroutine process_first_order_progenitors(filename, tree_id, root_node, fop_mass_limit, nlev, &
       & nfop)
     implicit none
     character(len=*), intent(IN) :: filename
     type (TreeNode), pointer :: root_node, This_Node, child_node, sibling_node
-    integer, intent(IN) :: tree_id
+    integer, intent(IN) :: tree_id, nlev
     real,    intent(IN) :: fop_mass_limit
     integer, intent(OUT) :: nfop
 
-    integer :: iprog
+    integer :: iprog, imain
     integer :: n_merge
 
     real, allocatable :: mprog(:), zprog(:), mhost(:), mmerged(:), zmerged(:)
+    real, allocatable :: main_branch_mass(:,:)
 
     integer, parameter :: GUESS_NPROG = 1e6
 
@@ -558,16 +575,23 @@ contains
     allocate(zprog(GUESS_NPROG),   source=-1.0)
     allocate(mmerged(GUESS_NPROG), source=-1.0)
     allocate(zmerged(GUESS_NPROG), source=-1.0)
+    
+    allocate(main_branch_mass(1,nlev), source=-1.0)
 
     ! This will also be used to count the progenitor nodes
     ! so start at zero
     iprog = 0
 
     ! Move along main branch
+    imain = 0
+
     This_Node => root_node
     main_branch: do while (associated(This_Node))
+      imain = imain + 1
       n_merge = 0
       
+      main_branch_mass(1,imain) = This_Node%mhalo
+
       ! Reset working pointers for safety
       child_node   => null()
       sibling_node => null()
@@ -616,7 +640,9 @@ contains
     ! Output
     nfop = iprog
     call write_pfop_hdf5(filename, tree_id, & 
-      &  mprog(1:iprog), mhost(1:iprog), zprog(1:iprog), mmerged(1:iprog), zmerged(1:iprog))
+      &  mprog(1:iprog), mhost(1:iprog), zprog(1:iprog), mmerged(1:iprog), zmerged(1:iprog), &
+      &  main_branch_mass)
+
     ! In principle this memory could be re-used...
     deallocate(mprog)
     deallocate(mhost)

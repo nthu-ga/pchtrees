@@ -32,6 +32,8 @@ module Parameter_File
   real,    parameter :: PA_TREE_EPS1_DEF    = 0.1
   real,    parameter :: PA_TREE_EPS2_DEF    = 0.1
 
+  real,    parameter :: PA_PFOP_MASS_LIMIT_DEF = 1e10
+
   ! Enum for output format
   integer, parameter :: OUTPUT_HDF5 = 1
   integer, parameter :: OUTPUT_JET  = 2
@@ -120,6 +122,14 @@ module Parameter_File
     real :: eps2 = 0.1
   end type Parameters_Tree
   type(Parameters_Tree) :: pa_tree
+
+  ! Parameters for processing first order progenitors
+  type Parameters_PFOP
+    character(len=:), allocatable :: file_path
+    real :: mass_limit = PA_PFOP_MASS_LIMIT_DEF
+    logical :: have_parameters = .false.
+  end type Parameters_PFOP
+  type(Parameters_PFOP) :: pa_pfop
 
 contains
 
@@ -363,6 +373,22 @@ contains
       call print_kv('eps2', pa_tree%eps2)
     end if
     write(*,*)
+
+    ! Get [pfop] section
+    pa_pfop%have_parameters = has_key(toml_content,"pfop") 
+    if (pa_pfop%have_parameters) then
+      section = toml_content%get("pfop")
+      call read_value(section%get('file_path',error=.false.), &
+        &             pa_pfop%file_path, default='')
+      if (dump_parameters) then
+        write(*,*)
+        write(*,*) '[pfop]'
+        call print_kv('pfop_path','')
+        call print_kv('mass_limit',pa_pfop%mass_limit)
+      end if
+      write(*,*)
+    endif
+
   end subroutine parse_parameter_file
   
   ! ############################################################ 
