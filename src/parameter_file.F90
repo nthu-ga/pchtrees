@@ -127,7 +127,7 @@ module Parameter_File
   type Parameters_PFOP
     character(len=:), allocatable :: file_path
     real :: mass_limit = PA_PFOP_MASS_LIMIT_DEF
-    logical :: have_parameters = .false.
+    logical :: have_parameters = .true.
   end type Parameters_PFOP
   type(Parameters_PFOP) :: pa_pfop
 
@@ -380,6 +380,8 @@ contains
       section = toml_content%get("pfop")
       call read_value(section%get('file_path',error=.false.), &
         &             pa_pfop%file_path, default='')
+      call read_value(section%get('mass_limit', error=.false.), &
+       & pa_pfop%mass_limit, default=PA_PFOP_MASS_LIMIT_DEF)
       if (dump_parameters) then
         write(*,*)
         write(*,*) '[pfop]'
