@@ -6,6 +6,7 @@ RM := rm -f
 
 # Build options
 BUILD_TYPE := OPT
+#BUILD_TYPE := OPT_PROFILE
 #BUILD_TYPE:= DEVELOP
 #BUILD_TYPE := DEBUG
 
@@ -35,6 +36,11 @@ endif
 ifeq ($(strip $(BUILD_TYPE)), OPT)
     FC_FLAGS := -O3 -fimplicit-none
 endif
+
+ifeq ($(strip $(BUILD_TYPE)), OPT_PROFILE)
+    FC_FLAGS := -O3 -fimplicit-none -pg --coverage
+endif
+
 
 HDF5_DIR := $(strip $(HDF5_DIR))
 ifdef HDF5_DIR
