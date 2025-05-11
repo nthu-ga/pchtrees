@@ -484,22 +484,6 @@ program tree
       end if need_more_files
     end if write_file
 
-    !   You might want to insert your own code here and pass it the
-    !   tree.
-
-    !   Write out the information for the first couple of
-    !   halos in the tree
-    
-    ! write(0,*) 'Example information from the tree:'
-    ! This_Node => MergerTree(1)
-    ! write(0,*) 'Base node:'
-    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0,' number of progenitors ',This_node%nchild
-    ! This_Node => This_node%child !move to first progenitor
-    ! write(0,*) 'First progenitor:'
-    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
-    ! This_Node => This_node%sibling !move to 2nd progenitor
-    ! write(0,*) '  mass=',This_node%mhalo,' z= ',1.0/alev(This_node%jlevel)-1.0
-
   end do generate_trees
 
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
