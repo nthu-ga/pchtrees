@@ -145,7 +145,7 @@ contains
             end if
           end if
         case ('--mmax')
-          ! Highest redshift in tree
+          ! Maximum halo masse
           if (i + 1 <= nargs) then
             if (.not.found_mmax) then
               call get_command_argument(i + 1, arg_mmax)
