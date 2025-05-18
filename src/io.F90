@@ -507,8 +507,9 @@ contains
       &                      mprog, mhost, zred, mmerged, zmerged,&
       &                      main_branch_mass)
     implicit none
-    character(len=*), intent(IN) :: filename
-    integer, intent(IN) :: tree_id
+    ! Filename can be char(len=*) or hid_t
+    class(*), intent(IN) :: filename
+    integer,  intent(IN) :: tree_id
     real, intent(IN) :: mprog(:), mhost(:), zred(:), mmerged(:), zmerged(:)
     real, intent(IN) :: main_branch_mass(:,:)
 
@@ -537,9 +538,8 @@ contains
   subroutine write_tree_hdf5(filename, tree_id, Tree_Root, nnodes, nlevels)
     implicit none
 
-    ! FIXME may want to pass open fileid
-
-    character(len=*), intent(IN) :: filename
+    ! Filename can be char(len=*) or hid_t
+    class(*), intent(IN) :: filename
     type (TreeNode), pointer, intent(IN) :: Tree_Root
     integer, intent(IN) :: tree_id, nnodes, nlevels
 
@@ -717,7 +717,6 @@ contains
     write(*,*) 'Wrote file'
     
     deallocate(pch_to_df_index)
-
   end subroutine write_tree_hdf5
 
   ! ############################################################
@@ -847,7 +846,8 @@ contains
     ! Append data to an existing extensible dataset
     !
     implicit none
-    character(len=*), intent(in) :: filename, dataset_name
+    class(*), intent(in) :: filename
+    character(len=*), intent(in) :: dataset_name
     class(*), dimension(:), intent(in) :: new_data
     integer, intent(out) :: hdferr
     
@@ -856,9 +856,23 @@ contains
     integer(hid_t) :: file_id, dset_id, dspace_id, memspace_id
     integer(hsize_t) :: dims(1), new_dims(1), start(1), ncount(1)
 
-    ! Open file for reading
-    call open_existing_file(filename, file_id, 'append_to_dataset')
-        
+    logical :: close_file_on_return
+    close_file_on_return = .false.
+
+    select type(filename)
+      type is(integer(hid_t))
+        ! File handle is an open file_id 
+        file_id = filename
+        close_file_on_return = .false.
+      type is(character(len=*))
+        ! File handle is a file name
+        ! Open file for reading
+        call open_existing_file(filename, file_id, 'append_to_dataset')
+        close_file_on_return = .true.
+      class default
+        write(*,*) "Unknown or unsupported file handle"
+    end select
+     
     ! Open dataset
     call h5dopen_f(file_id, dataset_name, dset_id, hdferr)
 
@@ -897,7 +911,10 @@ contains
     call h5sclose_f(memspace_id, hdferr)
     call h5sclose_f(dspace_id, hdferr)
     call h5dclose_f(dset_id, hdferr)
-    call h5fclose_f(file_id, hdferr)
+
+    if (close_file_on_return) then
+      call h5fclose_f(file_id, hdferr)
+    endif
   end subroutine append_to_dataset
 
   ! ############################################################
@@ -910,7 +927,8 @@ contains
     ! debugging.
     !
     implicit none
-    character(len=*), intent(in) :: filename, dataset_name
+    class(*), intent(in) :: filename
+    character(len=*), intent(in) :: dataset_name  
     class(*), dimension(:,:), intent(in) :: new_data
     integer, intent(out) :: hdferr
     
@@ -921,8 +939,22 @@ contains
     integer          :: dspace_rank
     integer(hsize_t) :: dims_memspace(2)
 
-    ! Open file for reading
-    call open_existing_file(filename, file_id, 'append_to_dataset')
+    logical :: close_file_on_return
+    close_file_on_return = .false.
+
+    select type(filename)
+      type is(integer(hid_t))
+        ! File handle is an open file_id 
+        file_id = filename
+        close_file_on_return = .false.
+      type is(character(len=*))
+        ! File handle is a file name
+        ! Open file for reading
+        call open_existing_file(filename, file_id, 'append_to_dataset')
+        close_file_on_return = .true.
+      class default
+        write(*,*) "Unknown or unsupported file handle"
+    end select
         
     ! Open dataset
     call h5dopen_f(file_id, dataset_name, dset_id, hdferr)
@@ -935,20 +967,9 @@ contains
     ! an error...
     call h5sget_simple_extent_dims_f(dspace_id, dims, max_dims, dspace_rank)
 
-    !write(*,*)
-    !write(*,*) 'Dataspace test (before extending)'
-    !write(*,*) '  current', dims
-    !write(*,*) '      max', max_dims
-    !write(*,*) '     rank', dspace_rank
-
     ! Compute new dataset size
     nrows       = size(new_data, 1)
     ncols       = size(new_data, 2)
-
-    !write(*,*)
-    !write(*,*) 'Extending dataset'
-    !write(*,*) 'New rows', nrows
-    !write(*,*) 'New cols', ncols
 
     new_dims(1) = dims(1)
     new_dims(2) = dims(2) + nrows
@@ -957,55 +978,28 @@ contains
     call h5dset_extent_f(dset_id, new_dims, hdferr)
     call check_hdf5_err(hdferr,"Error setting 2d extent")
     
-    !write(*,*)
-    !write(*,*) 'Dataset extended'
- 
     ! Get the new dataspace of the exended dataset
     call h5dget_space_f(dset_id, dspace_id, hdferr)
     call check_hdf5_err(hdferr,"Error fetching new dataspace")
  
-    !call h5sget_simple_extent_dims_f(dspace_id, current_dims_test, max_dims_test, hdferr)
-    !write(*,*)
-    !write(*,*) 'Dataspace test (after extending)'
-    !write(*,*) '  current', current_dims_test
-    !write(*,*) '      max', max_dims_test
-    !write(*,*) '     rank', hdferr
-    !write(*,*)
-  
     ! Select hyperslab (newly appended portion)
     ! APC CAUTION: the "start" here is an offset from zero (not a fortran index
     ! starting at 1)
     start  = (/ INT(0,kind=hsize_t),   dims(2)    /)  ! Start writing at the previous last index
     ncount = (/ ncols,                 nrows      /)  ! Number of elements to append
 
-    !write(*,*)
-    !write(*,*) 'Selecting hyperslab'
-    !write(*,*) 'Start', start
-    !write(*,*) 'Count', ncount
-
     call h5sselect_hyperslab_f(dspace_id, H5S_SELECT_SET_F, start, ncount, hdferr)
     call check_hdf5_err(hdferr,"Error selecting hyperslab")
     
     ! Define memory space
     ! APC: not clear if we should be transposing anything here or not
-    ! write(*,*) 'Creating memspace'
     dims_memspace(1) = ncols
     dims_memspace(2) = nrows
 
     call h5screate_simple_f(2, dims_memspace, memspace_id, hdferr)
     call check_hdf5_err(hdferr,"Error creating new memspace")
    
-    !call h5sget_simple_extent_dims_f(memspace_id, current_dims_test, max_dims_test, hdferr)
-    !write(*,*)
-    !write(*,*) 'Memspace test'
-    !write(*,*) '  current', current_dims_test
-    !write(*,*) '      max', max_dims_test
-    !write(*,*) '     rank', hdferr
-    !write(*,*)
-    ! call h5sselect_hyperslab_f(memspace_id, H5S_SELECT_SET_F, (/ INT(1,kind=hsize_t), INT(1,kind=hsize_t) /), dims_memspace, hdferr)
-
     ! Write new data
-    ! write(*,*) 'Writing data'
     select type(new_data)
     type is (real)
       call h5dwrite_f(dset_id, H5T_NATIVE_REAL, new_data, ncount, hdferr, &
@@ -1023,7 +1017,10 @@ contains
     call h5sclose_f(memspace_id, hdferr)
     call h5sclose_f(dspace_id, hdferr)
     call h5dclose_f(dset_id, hdferr)
-    call h5fclose_f(file_id, hdferr)
+
+    if (close_file_on_return) then
+      call h5fclose_f(file_id, hdferr)
+    endif
   end subroutine append_to_dataset_2d
 
   ! ############################################################

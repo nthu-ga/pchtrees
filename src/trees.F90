@@ -66,6 +66,9 @@ program tree
   integer(hsize_t) :: N_min, N_max
   integer(hsize_t) :: N_min_pfop, N_max_pfop
   integer :: hdferr
+
+  ! Persistant file handles
+  integer(hid_t) :: h5_output_tree_file_id, h5_output_pfop_file_id
 #else
   integer :: N_min, N_max
 #endif
@@ -340,6 +343,10 @@ program tree
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
       call create_hdf5_output(file_path, N_min, N_max) 
+
+      ! Keep the HDF5 file handle open during the tree loop
+      ! TODO just return the handle from the previous call!
+      call open_existing_file(file_path, h5_output_tree_file_id, 'main')
 #else
       if (found_switch_verbose) then
         write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
@@ -356,9 +363,15 @@ program tree
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     n_min_pfop = 100
     n_max_pfop = 1e7
+#ifdef WITH_HDF5
     call create_hdf5_output_process_first_order_progenitors(file_path_pfop,n_min_pfop,n_max_pfop,& 
       &                                                     INT(nlev,   kind=hsize_t),           &
       &                                                     INT(ntrees, kind=hsize_t))
+
+    ! Keep the HDF5 file handle open during the tree loop
+    ! TODO just return the handle from the previous call!
+    call open_existing_file(file_path_pfop, h5_output_pfop_file_id, 'main')
+#endif
     allocate(trees_nfop(ntrees), source=0)
     allocate(trees_mroot(ntrees), source=0.0)
   endif
@@ -413,7 +426,7 @@ program tree
     ! Special functions to derive properties from trees
     if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
       ! This sets nfop
-      call process_first_order_progenitors(file_path_pfop, itree-1, This_Node, FOP_MASS_LIMIT, nlev, nfop)
+      call process_first_order_progenitors(h5_output_pfop_file_id, itree-1, This_Node, FOP_MASS_LIMIT, nlev, nfop)
       trees_nfop(itree) = nfop
       trees_mroot(itree) = This_Node%mhalo
     endif
@@ -426,7 +439,7 @@ program tree
     
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
-      call write_tree_hdf5(file_path, itree-1, this_node, &
+      call write_tree_hdf5(h5_output_tree_file_id, itree-1, this_node, &
         & nhalo, nlev)
 #else
       write(*,*) "Not writing tree -- hdf5 format specified, but no HDF5 support!"
@@ -472,7 +485,12 @@ program tree
         write(*,*) 'Output file:   ', trim(file_path)
         if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
+          ! Close the current file and open a new one
+          call h5fclose_f(h5_output_tree_file_id, hdferr)
           call create_hdf5_output(file_path, N_min, N_max) 
+          ! Keep the HDF5 file handle open during the tree loop
+          ! TODO just return the handle from the previous call!
+          call open_existing_file(file_path, h5_output_tree_file_id, 'main')
 #else
           if (found_switch_verbose) then
             write(*,*) 'Not creating HDF5 file, HDF5 output not supported in this build'
@@ -485,6 +503,16 @@ program tree
     end if write_file
 
   end do generate_trees
+          
+! Close the persistent HDF5 output handles, now we're done with the tree loop 
+#ifdef WITH_HDF5
+  if (TASK_OUTPUT_TREES) then
+    call h5fclose_f(h5_output_tree_file_id, hdferr)
+  end if
+  if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
+    call h5fclose_f(h5_output_pfop_file_id, hdferr)
+  end if
+#endif
 
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     ! Write the header
@@ -540,7 +568,8 @@ contains
   subroutine process_first_order_progenitors(filename, tree_id, root_node, fop_mass_limit, nlev, &
       & nfop)
     implicit none
-    character(len=*), intent(IN) :: filename
+
+    class(*), intent(IN) :: filename
     type (TreeNode), pointer :: root_node, This_Node, child_node, sibling_node
     integer, intent(IN) :: tree_id, nlev
     real,    intent(IN) :: fop_mass_limit
@@ -637,7 +666,7 @@ contains
   end subroutine process_first_order_progenitors
 
   subroutine insertion_sort_desc(arr, n)
-  ! A ChatGPT descending order insertion sort...
+      ! A ChatGPT descending order insertion sort...
       implicit none
       integer, intent(in) :: n
       real, intent(inout) :: arr(n)
