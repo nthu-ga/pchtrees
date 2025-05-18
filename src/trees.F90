@@ -150,6 +150,9 @@ program tree
     if (found_switch_loguniform) then
       mphalo_min = log10(mphalo)
       mphalo_max = log10(mphalo_max)
+      write(*,'(A, g6.3, A, g6.3)') 'Sampling log mass range from ', mphalo_min ,' to ', mphalo_max
+    else
+      write(*,'(A, f6.3, A, f6.3)') 'Sampling mass range from ', mphalo_min ,' to ', mphalo_max
     endif
   end if
 

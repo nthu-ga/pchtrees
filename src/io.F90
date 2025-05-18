@@ -714,7 +714,7 @@ contains
     ! - Fix parameters
     ! - Tidy up junk
 
-    write(*,*) 'Wrote file'
+    ! write(*,*) 'Wrote file'
     
     deallocate(pch_to_df_index)
   end subroutine write_tree_hdf5
