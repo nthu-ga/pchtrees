@@ -5,9 +5,10 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 RM := rm -f
 
 # Build options
-BUILD_TYPE := OPT
+#BUILD_TYPE := OPT
 #BUILD_TYPE := OPT_PROFILE
 #BUILD_TYPE:= DEVELOP
+BUILD_TYPE:= DEVELOP_FIXES
 #BUILD_TYPE := DEBUG
 
 # Compiler
@@ -32,6 +33,12 @@ endif
 ifeq ($(strip $(BUILD_TYPE)), DEVELOP)
     FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
 endif
+
+ifeq ($(strip $(BUILD_TYPE)), DEVELOP_FIXES)
+    FPP_FLAGS := -DSTRICT_REAL_EQ
+    FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
+endif
+
 
 ifeq ($(strip $(BUILD_TYPE)), OPT)
     FC_FLAGS := -O3 -fimplicit-none
