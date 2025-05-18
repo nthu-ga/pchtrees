@@ -74,6 +74,7 @@ program tree
 #endif
 
   logical :: TASK_OUTPUT_TREES = .true.
+  real, allocatable    :: trees_mroot(:)
  
   ! Special task
   logical :: TASK_PROCESS_FIRST_ORDER_PROGENITORS = .false.
@@ -81,7 +82,6 @@ program tree
   character(len=1024)  :: file_path_pfop
   integer :: nfop
   integer, allocatable :: trees_nfop(:)
-  real, allocatable    :: trees_mroot(:)
   real                 :: fop_mass_limit
 
   ! Parse the command line
@@ -322,6 +322,7 @@ program tree
   allocate(trees_nhalos(ntrees), source=0)
   allocate(nhalolev(nlev),       source=0)
   allocate(jphalo(nlev),         source=0)
+  allocate(trees_mroot(ntrees),  source=0.0)
 
   ierr     = 1 ! initial error status us to control make_tree()
   nhalomax = 0 ! initialise
@@ -376,7 +377,6 @@ program tree
     call open_existing_file(file_path_pfop, h5_output_pfop_file_id, 'main')
 #endif
     allocate(trees_nfop(ntrees), source=0)
-    allocate(trees_mroot(ntrees), source=0.0)
   endif
 
   ! Start generating trees
@@ -425,13 +425,13 @@ program tree
     ! Write the tree to active output file
     ! Label trees with 0-based index itree-1
     This_Node => MergerTree(1)
+    trees_mroot(itree) = This_Node%mhalo
   
     ! Special functions to derive properties from trees
     if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
       ! This sets nfop
       call process_first_order_progenitors(h5_output_pfop_file_id, itree-1, This_Node, FOP_MASS_LIMIT, nlev, nfop)
       trees_nfop(itree) = nfop
-      trees_mroot(itree) = This_Node%mhalo
     endif
 
     ! Only proceed past here if we're writing tree output
@@ -472,7 +472,9 @@ program tree
         call write_output_times(file_path, alev)
        
         ! Write the trees table
-        call write_tree_table(file_path, trees_nhalos(first_tree_in_file:itree))
+        call write_tree_table(file_path,            & 
+          & trees_nhalos(first_tree_in_file:itree), &
+          & trees_mroot(first_tree_in_file:itree))
 
         ! Write parameters
         call write_parameters(file_path)
@@ -534,9 +536,6 @@ program tree
       stop
     end if
 
-    ! Write the trees table
-    ! all write_tree_table(pa_output%file_path, trees_nhalos)
-  
 #ifdef WITH_HDF5
     ! Loop over each output file and write the header, which needs information
     ! about all the files.

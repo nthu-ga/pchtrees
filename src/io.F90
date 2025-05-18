@@ -349,16 +349,18 @@ contains
   end subroutine write_output_times
 
   ! ############################################################
-  subroutine write_tree_table(filename, tree_lengths)
+  subroutine write_tree_table(filename, tree_lengths, tree_mroot)
     implicit none
     
     character(len=*), intent(in) :: filename
     integer, dimension(:), intent(in) :: tree_lengths
+    real, dimension(:),    intent(in) :: tree_mroot
 
     integer, allocatable :: tree_property(:)
     integer :: i
 
     call write_1d_array_integer(filename, '/TreeTable/Length', tree_lengths)
+    call write_1d_array_real(filename, '/TreeTable/RootMass', tree_mroot)
 
     allocate(tree_property(size(tree_lengths)))
 
