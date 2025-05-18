@@ -937,7 +937,6 @@ contains
     integer(hid_t)   :: file_id, dset_id, dspace_id, memspace_id
     integer(hsize_t) :: dims(2), max_dims(2), new_dims(2), start(2), ncount(2)
     integer(hsize_t) :: nrows, ncols
-    integer(hsize_t) :: current_dims_test(2), max_dims_test(2)
     integer          :: dspace_rank
     integer(hsize_t) :: dims_memspace(2)
 
