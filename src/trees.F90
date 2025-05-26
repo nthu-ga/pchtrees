@@ -517,7 +517,6 @@ program tree
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     call h5fclose_f(h5_output_pfop_file_id, hdferr)
   end if
-#endif
 
   if (TASK_PROCESS_FIRST_ORDER_PROGENITORS) then
     ! Write the header
@@ -525,9 +524,15 @@ program tree
       & sum(trees_nfop), sum(trees_nfop), &
       & ntrees, ntrees, 1)
 
+      if (pa_output%output_format.eq.OUTPUT_HDF5) then
+        ! Write the aexp list
+        call write_output_times(file_path_pfop, alev)
+      endif
+
     ! Write the per-tree data
     call write_tree_table_process_first_order_progenitors(file_path_pfop, trees_nfop, trees_mroot)
   endif
+#endif
 
   if (TASK_OUTPUT_TREES) then
     ! The number of files we have written
