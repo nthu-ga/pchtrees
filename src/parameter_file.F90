@@ -1,5 +1,5 @@
 module Parameter_File
-
+  
   public :: parse_parameter_file
   public :: pa_runtime, pa_output, pa_tree
 
@@ -136,8 +136,12 @@ contains
   subroutine parse_parameter_file(file_name_in, dump_parameters_unit)
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
     ! use :: tomlf
+    ! We don't USE TinyTOML at module level because it defines a function
+    ! split, which conflicts with pch_split! The latter should really be
+    ! wrapped in a module. FIXME
     use TinyTOML
     implicit none
+    
  
     character(len=*), intent(in) :: file_name_in
     character(len=100) :: file_name
@@ -259,26 +263,31 @@ contains
     end select
 
     ! Optional aexp list
-    temp_keyval = section%get('aexp_list', error=.false.)
-    pa_output%have_aexp_list = .false.
-    select case(temp_keyval%error_code)
-    case (KEY_NOT_FOUND)
-      ! No axep list, ok
-      ! Not really needed, but no "pass" in Fortran...
-      pa_output%have_aexp_list = .false.
-    case (SUCCESS)
-      call read_value(temp_keyval, pa_output%aexp_list)
-      ! Only sanity check is that an empty value is
-      ! counted as no value
-      if (len(trim(pa_output%aexp_list)).gt.0) then
-        pa_output%have_aexp_list = .true.
-      else
-        pa_output%have_aexp_list = .false.
-      endif
-    case default
-      write(*,*) 'Bad news!'
-      stop
-    end select
+    call read_optional_string_parameter(section, &
+      & 'aexp_list',                             &
+      & pa_output%have_aexp_list,                &
+      & pa_output%aexp_list)
+
+    !temp_keyval = section%get('aexp_list', error=.false.)
+    !pa_output%have_aexp_list = .false.
+    !select case(temp_keyval%error_code)
+    !case (KEY_NOT_FOUND)
+    !  ! No axep list, ok
+    !  ! Not really needed, but no "pass" in Fortran...
+    !  pa_output%have_aexp_list = .false.
+    !case (SUCCESS)
+    !  call read_value(temp_keyval, pa_output%aexp_list)
+    !  ! Only sanity check is that an empty value is
+    !  ! counted as no value
+    !  if (len(trim(pa_output%aexp_list)).gt.0) then
+    !    pa_output%have_aexp_list = .true.
+    !  else
+    !    pa_output%have_aexp_list = .false.
+    !  endif
+    !case default
+    !  write(*,*) 'Bad news!'
+    !  stop
+    !end select
 
     if (dump_parameters) then
       write(*,*)
@@ -421,5 +430,41 @@ contains
       write(output_unit, *) 'Unsupported type'
     end select
   end subroutine print_kv
+  
+  ! ############################################################
+  subroutine read_optional_string_parameter(section, param_name, &
+      & have_param_flag, param_store)
+    use, intrinsic :: iso_fortran_env, only: stderr => error_unit
+    use TinyTOML
+    implicit none
+
+    type(toml_object), intent(IN)   :: section
+    character(len=*), intent(IN)    :: param_name
+    logical, intent(INOUT)          :: have_param_flag
+    character(len=:), allocatable, intent(INOUT) :: param_store
+
+    type(toml_object) :: temp_keyval
+    
+    temp_keyval = section%get(param_name, error=.false.)
+    have_param_flag = .false.
+    select case(temp_keyval%error_code)
+    case (KEY_NOT_FOUND)
+      ! No parameter, ok
+      ! Not really needed, but no "pass" in Fortran...
+      have_param_flag = .false.
+    case (SUCCESS)
+      call read_value(temp_keyval, param_store)
+      ! Only sanity check is that an empty value is
+      ! counted as no value
+      if (len(trim(param_store)).gt.0) then
+        have_param_flag = .true.
+      else
+        have_param_flag = .false.
+      endif
+    case default
+      write(*,*) 'Bad news!'
+      stop
+    end select
+  end subroutine read_optional_string_parameter
 
 end module Parameter_File

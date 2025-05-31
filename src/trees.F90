@@ -343,7 +343,7 @@ program tree
 
   if (TASK_OUTPUT_TREES) then
     write(*,*) 'Output file:   ', trim(file_path)
-    write(*,*) 'Output format: ', trim(pa_output%output_format)
+    write(*,*) 'Output format: ', pa_output%output_format
 
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
