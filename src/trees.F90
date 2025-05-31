@@ -336,14 +336,15 @@ program tree
   ifile = 1
   first_tree_in_file = 1
   write(file_path, '(A, A, I3.3, A, A)') trim(pa_output%file_base), '.', ifile, '.', trim(pa_output%file_ext)
-  write(*,*) 'Output file:   ', trim(file_path)
-  write(*,*) 'Output format: ', pa_output%output_format
 
   ! APC FIXME estimate these numbers better
   N_min = 100
   N_max = 1000
 
   if (TASK_OUTPUT_TREES) then
+    write(*,*) 'Output file:   ', trim(file_path)
+    write(*,*) 'Output format: ', trim(pa_output%output_format)
+
     if (pa_output%output_format.eq.OUTPUT_HDF5) then
 #ifdef WITH_HDF5
       call create_hdf5_output(file_path, N_min, N_max) 
