@@ -11,7 +11,10 @@ module Parameter_File
   integer, parameter :: PA_RUNTIME_ISEED_DEF = -8635
   integer, parameter :: PA_OUTPUT_MAX_TREES_PER_FILE_DEF = 1000
 
+  ! nlev is a bit special
+  integer, parameter :: PA_OUTPUT_NLEV_NOTREAD = -1
   integer, parameter :: PA_OUTPUT_NLEV_DEF = 10
+
   real,    parameter :: PA_OUTPUT_MRES_DEF = 1.0e+08
 
   real,    parameter :: PA_COSMOLOGY_OMEGA0_DEF  = 0.25
@@ -54,12 +57,16 @@ module Parameter_File
     ! Extension
     character(len=:), allocatable :: file_ext
     ! Number of levels in the tree
-    integer :: nlev = PA_OUTPUT_NLEV_DEF 
+    integer :: nlev = PA_OUTPUT_NLEV_NOTREAD
+    logical :: have_nlev = .false.
     ! Mass resolution
     real    :: mres = PA_OUTPUT_MRES_DEF
     ! Output time list
     character(len=:), allocatable :: aexp_list
     logical :: have_aexp_list
+    ! Output redshift list
+    character(len=:), allocatable :: zred_list
+    logical :: have_zred_list
     ! Maximum trees per file
     integer :: max_trees_per_file = PA_OUTPUT_MAX_TREES_PER_FILE_DEF
   end type Parameters_Output
@@ -235,7 +242,15 @@ contains
     call read_value(section%get('file_base', error=.false.), & 
       & pa_output%file_base, default='./output_tree')
     call read_value(section%get('nlev', error=.false.), & 
-      & pa_output%nlev, default=PA_OUTPUT_NLEV_DEF)
+      & pa_output%nlev, default=PA_OUTPUT_NLEV_NOTREAD)
+
+    ! We care about whether we actually read nlev or just used the
+    ! default value. This is a bit of a hack.
+    pa_output%have_nlev = pa_output%nlev.eq.PA_OUTPUT_NLEV_NOTREAD
+    if (.not.pa_output%have_nlev) then
+      pa_output%nlev = PA_OUTPUT_NLEV_DEF
+    endif
+
     call read_value(section%get('mres', error=.false.), & 
       & pa_output%mres, default=PA_OUTPUT_MRES_DEF)
     call read_value(section%get("max_trees_per_file", error=.false.), &
@@ -289,6 +304,11 @@ contains
     !  stop
     !end select
 
+    call read_optional_string_parameter(section, &
+      & 'zred_list',                             &
+      & pa_output%have_zred_list,                &
+      & pa_output%zred_list)
+
     if (dump_parameters) then
       write(*,*)
       write(*,*) '[output]'
@@ -305,6 +325,10 @@ contains
       if (pa_output%have_aexp_list) then
         call print_kv('aexp_list', pa_output%aexp_list)
       endif
+      if (pa_output%have_zred_list) then
+        call print_kv('zred_list', pa_output%zred_list)
+      endif
+
     end if
 
     ! Get [cosmology] section

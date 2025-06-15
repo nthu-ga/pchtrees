@@ -174,7 +174,9 @@ program tree
   if (found_nlev) then
     read(arg_nlev, *, IOSTAT=ierr) nlev ! Higest redshift in tree
   else
-    nlev = pa_output%nlev
+    if (pa_output%have_nlev) then
+      nlev = pa_output%nlev
+    endif
   endif 
 
   ! Set up output file type options
@@ -189,19 +191,27 @@ program tree
   write(*,'(1x,a,i10)')   'Trees to generate                : ', ntrees
   write(*,'(1x,a,g10.3)') 'Target halo mass (Msol)          : ', mphalo
 
-   if (pa_output%have_aexp_list.and.((nlev.gt.0).or.found_ahalo.or.found_zmax)) then 
+  if ((pa_output%have_aexp_list.or.pa_output%have_zred_list).and.&
+    &(found_nlev.or.pa_output%have_nlev.or.found_ahalo.or.found_zmax)) then 
      write(*,*)
      write(*,*) 'Warning: parameter file specifies an expansion factor list but'
      write(*,*) '         nlev, ahalo and/or zmax were passed on the command'
      write(*,*) '         line or in the parameter file. The expansion factor'
-     write(*,*) '         list has priority.'
+     write(*,*) '         list / redshift list in the parameter file has priority.'
      write(*,*)
   else
     write(*,'(1x,a,f10.3)') 'Expansion factor at root of tree : ', ahalo
     write(*,'(1x,a,f10.3)') 'Maximum redshift for tree nodes  : ', zmax
     write(*,'(1x,a,i10)')   'Tree levels                      : ', nlev
   end if
-  
+ 
+  ! Sanity check that we're going to have some levels
+  if ((nlev.le.0).and.(.not.(pa_output%have_aexp_list.or.pa_output%have_zred_list))) then
+    write(*,*)
+    write(*,*) 'FATAL: nlev <= 0 -- this is nonsense, what are you doing?!'
+    stop
+  endif
+
   ! Set the variables in the cosmological parameters module from the parameter
   ! file values.
 
@@ -237,26 +247,35 @@ program tree
   rand_seed(:) = iseed0
   call random_seed(put=rand_seed)
 
-  ! Set up the array of redshifts at which the tree is to be stored
+  if (pa_output%have_aexp_list.and.pa_output%have_zred_list) then
+    write(*,*) "FATAL: You have specified both an expansion factor output list"
+    write(*,*) "       *and* a redshift output list in the parameter file!"
+    write(*,*) "       You can only have one or the other!"
+    stop
+  endif
+
+  ! Set up the array of redshifts/aexps at which the tree is to be stored
   if (pa_output%have_aexp_list) then
     write(*,*)
     write(*,*) "Using expansion factor list: ", trim(pa_output%aexp_list)
-
-    ! First pass: Count the number of lines
-    nlev = 0
-    open(newunit=unit_num, file=pa_output%aexp_list, status="old", action="read", iostat=ierr)
-    if (ierr /= 0) then
-        write(*,*) "Error opening expansion factor list!"
-        stop
-    end if
-
-    do
-        read(unit_num, *, iostat=ierr) temp
-        if (ierr /= 0) exit  ! Exit loop on error (end of file)
-        nlev = nlev + 1
-    end do
-    close(unit_num)
+    call count_lines_in_file(pa_output%aexp_list, nlev)
+  elseif (pa_output%have_zred_list) then
+     write(*,*)
+    write(*,*) "Using redshift list: ", trim(pa_output%zred_list)
+    call count_lines_in_file(pa_output%zred_list, nlev)
   end if
+
+  if (nlev.le.0) then
+    write(*,*)
+    write(*,*) 'FATAL: no lines were read from your redshift or expansion factor list!'
+    if (pa_output%have_zred_list) then
+      write(*,*) '       Check: ', pa_output%zred_list
+    elseif (pa_output%have_aexp_list) then
+      write(*,*) '       Check: ', pa_output%aexp_list
+    endif
+    stop
+  endif
+
 
   ! Allocate timestep arrays
   if (nlev > 1) then
@@ -276,6 +295,19 @@ program tree
         read(unit_num, *) alev(ilev)
     end do
     close(unit_num)
+
+    ! Ensure descending order
+    call insertion_sort_desc(alev,nlev)
+  elseif (pa_output%have_zred_list) then
+    ! Second pass: read readshifts, using expansion factor list for temp storage
+    open(newunit=unit_num, file=pa_output%zred_list, status="old", action="read", iostat=ierr)
+    do ilev=1,nlev
+        read(unit_num, *) alev(ilev)
+    end do
+    close(unit_num)
+
+    ! Convert to alev = 1 / (1+z)
+    alev(:) = 1.0/(1+alev(:))
 
     ! Ensure descending order
     call insertion_sort_desc(alev,nlev)
@@ -691,5 +723,29 @@ contains
           arr(j + 1) = key
       end do
   end subroutine insertion_sort_desc
+
+  subroutine count_lines_in_file(path, nlines)
+    implicit none
+
+    character(len=*), intent(IN) :: path
+    integer, intent(OUT) :: nlines
+    integer :: ierr
+    integer :: unit_num
+
+    ! First pass: Count the number of lines
+    nlines = 0
+    open(newunit=unit_num, file=trim(path), status="old", action="read", iostat=ierr)
+    if (ierr /= 0) then
+        write(*,*) "Error opening expansion factor list!"
+        stop
+    end if
+
+    do
+        read(unit_num, *, iostat=ierr) temp
+        if (ierr /= 0) exit  ! Exit loop on error (end of file)
+        nlines = nlines + 1
+    end do
+    close(unit_num)
+  end subroutine count_lines_in_file
 
 end program tree
