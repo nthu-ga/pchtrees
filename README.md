@@ -34,7 +34,8 @@ https://github.com/archermarx/TinyTOML
 
 ## Building
 
-**The code requires gcc (gfortran) 9.4.0 or later.**
+> [!IMPORTANT]  
+> **The code requires gcc (gfortran) 9.4.0 or later.**
 
 After cloning this repository, the code can be built with `make all`, which
 will produce the `./pchtrees` executable. 
