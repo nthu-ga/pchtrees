@@ -17,6 +17,8 @@ module Commandline
   logical :: found_nlev    = .false.
   logical :: found_switch_defaults = .false.
   logical :: found_switch_verbose  = .false.
+  logical :: found_task_no_output_trees  = .false.
+  logical :: found_task_process_first_order_progenitors = .false.
 
   logical :: found_mmax = .false.
   logical :: found_switch_loguniform  = .false.
@@ -65,7 +67,18 @@ contains
             found_switch_loguniform = .true.
             i = i + 1
           end if
-
+        case ('--no-output-trees')
+          ! Do not write any tree ouput 
+          if (.not.found_task_no_output_trees) then
+            found_task_no_output_trees = .true.
+            i = i + 1
+          end if
+        case ('--process-first-order-progenitors')
+          ! Do not write any tree ouput 
+          if (.not.found_task_process_first_order_progenitors) then
+            found_task_process_first_order_progenitors = .true.
+            i = i + 1
+          end if
         case ('--params')
           ! Parameter file path
           if (i + 1 <= nargs) then
@@ -132,7 +145,7 @@ contains
             end if
           end if
         case ('--mmax')
-          ! Highest redshift in tree
+          ! Maximum halo masse
           if (i + 1 <= nargs) then
             if (.not.found_mmax) then
               call get_command_argument(i + 1, arg_mmax)

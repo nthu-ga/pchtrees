@@ -5,8 +5,10 @@ MAKEFLAGS += --no-builtin-rules --no-builtin-variables
 RM := rm -f
 
 # Build options
-#BUILD_TYPE := OPT
-BUILD_TYPE:= DEVELOP
+BUILD_TYPE := OPT
+#BUILD_TYPE := OPT_PROFILE
+#BUILD_TYPE:= DEVELOP
+#BUILD_TYPE:= DEVELOP_FIXES
 #BUILD_TYPE := DEBUG
 
 # Compiler
@@ -14,7 +16,7 @@ FC = gfortran
 COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
-#HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--8.3.0/serial
+HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
 
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
@@ -32,9 +34,20 @@ ifeq ($(strip $(BUILD_TYPE)), DEVELOP)
     FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
 endif
 
+ifeq ($(strip $(BUILD_TYPE)), DEVELOP_FIXES)
+    FPP_FLAGS := -DSTRICT_REAL_EQ
+    FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
+endif
+
+
 ifeq ($(strip $(BUILD_TYPE)), OPT)
     FC_FLAGS := -O3 -fimplicit-none
 endif
+
+ifeq ($(strip $(BUILD_TYPE)), OPT_PROFILE)
+    FC_FLAGS := -O3 -fimplicit-none -pg --coverage
+endif
+
 
 HDF5_DIR := $(strip $(HDF5_DIR))
 ifdef HDF5_DIR

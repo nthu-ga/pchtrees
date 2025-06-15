@@ -1,8 +1,8 @@
 # PCH Tree Code
 
 This repository contains a branch of the Extended Press-Schechter (EPS) merger
-tree generation code described by Parkinson, Cole & Helly (2008), MNRAS, 383,
-557. 
+tree generation code described by [Parkinson, Cole & Helly (2008), MNRAS, 383,
+557](https://ui.adsabs.harvard.edu/abs/2008MNRAS.383..557P/abstract). 
 
 The reference version of this code is available from Shaun Cole:
 https://astro.dur.ac.uk/~cole/merger_trees/

@@ -168,7 +168,7 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   ! sigma(mmin) and slope alpha on the first call of this routine.
   ! 
 
-#ifdef STRICT_REAL_EQUAL
+#ifdef STRICT_REAL_EQ
   if (.not.real_equal(mmin,mminlast)) then  
 #else
   !if ((mmin.eq.mminlast).neqv.real_equal(mmin,mminlast)) then

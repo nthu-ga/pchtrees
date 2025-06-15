@@ -1,5 +1,5 @@
 module Parameter_File
-
+  
   public :: parse_parameter_file
   public :: pa_runtime, pa_output, pa_tree
 
@@ -11,7 +11,10 @@ module Parameter_File
   integer, parameter :: PA_RUNTIME_ISEED_DEF = -8635
   integer, parameter :: PA_OUTPUT_MAX_TREES_PER_FILE_DEF = 1000
 
+  ! nlev is a bit special
+  integer, parameter :: PA_OUTPUT_NLEV_NOTREAD = -1
   integer, parameter :: PA_OUTPUT_NLEV_DEF = 10
+
   real,    parameter :: PA_OUTPUT_MRES_DEF = 1.0e+08
 
   real,    parameter :: PA_COSMOLOGY_OMEGA0_DEF  = 0.25
@@ -31,6 +34,8 @@ module Parameter_File
   real,    parameter :: PA_TREE_GAMMA_2_DEF = -0.01
   real,    parameter :: PA_TREE_EPS1_DEF    = 0.1
   real,    parameter :: PA_TREE_EPS2_DEF    = 0.1
+
+  real,    parameter :: PA_PFOP_MASS_LIMIT_DEF = 1e10
 
   ! Enum for output format
   integer, parameter :: OUTPUT_HDF5 = 1
@@ -52,12 +57,16 @@ module Parameter_File
     ! Extension
     character(len=:), allocatable :: file_ext
     ! Number of levels in the tree
-    integer :: nlev = PA_OUTPUT_NLEV_DEF 
+    integer :: nlev = PA_OUTPUT_NLEV_NOTREAD
+    logical :: have_nlev = .false.
     ! Mass resolution
     real    :: mres = PA_OUTPUT_MRES_DEF
     ! Output time list
     character(len=:), allocatable :: aexp_list
     logical :: have_aexp_list
+    ! Output redshift list
+    character(len=:), allocatable :: zred_list
+    logical :: have_zred_list
     ! Maximum trees per file
     integer :: max_trees_per_file = PA_OUTPUT_MAX_TREES_PER_FILE_DEF
   end type Parameters_Output
@@ -121,13 +130,25 @@ module Parameter_File
   end type Parameters_Tree
   type(Parameters_Tree) :: pa_tree
 
+  ! Parameters for processing first order progenitors
+  type Parameters_PFOP
+    character(len=:), allocatable :: file_path
+    real :: mass_limit = PA_PFOP_MASS_LIMIT_DEF
+    logical :: have_parameters = .true.
+  end type Parameters_PFOP
+  type(Parameters_PFOP) :: pa_pfop
+
 contains
 
   subroutine parse_parameter_file(file_name_in, dump_parameters_unit)
     use, intrinsic :: iso_fortran_env, only: stderr => error_unit
     ! use :: tomlf
+    ! We don't USE TinyTOML at module level because it defines a function
+    ! split, which conflicts with pch_split! The latter should really be
+    ! wrapped in a module. FIXME
     use TinyTOML
     implicit none
+    
  
     character(len=*), intent(in) :: file_name_in
     character(len=100) :: file_name
@@ -221,7 +242,15 @@ contains
     call read_value(section%get('file_base', error=.false.), & 
       & pa_output%file_base, default='./output_tree')
     call read_value(section%get('nlev', error=.false.), & 
-      & pa_output%nlev, default=PA_OUTPUT_NLEV_DEF)
+      & pa_output%nlev, default=PA_OUTPUT_NLEV_NOTREAD)
+
+    ! We care about whether we actually read nlev or just used the
+    ! default value. This is a bit of a hack.
+    pa_output%have_nlev = pa_output%nlev.eq.PA_OUTPUT_NLEV_NOTREAD
+    if (.not.pa_output%have_nlev) then
+      pa_output%nlev = PA_OUTPUT_NLEV_DEF
+    endif
+
     call read_value(section%get('mres', error=.false.), & 
       & pa_output%mres, default=PA_OUTPUT_MRES_DEF)
     call read_value(section%get("max_trees_per_file", error=.false.), &
@@ -249,26 +278,36 @@ contains
     end select
 
     ! Optional aexp list
-    temp_keyval = section%get('aexp_list', error=.false.)
-    pa_output%have_aexp_list = .false.
-    select case(temp_keyval%error_code)
-    case (KEY_NOT_FOUND)
-      ! No axep list, ok
-      ! Not really needed, but no "pass" in Fortran...
-      pa_output%have_aexp_list = .false.
-    case (SUCCESS)
-      call read_value(temp_keyval, pa_output%aexp_list)
-      ! Only sanity check is that an empty value is
-      ! counted as no value
-      if (len(trim(pa_output%aexp_list)).gt.0) then
-        pa_output%have_aexp_list = .true.
-      else
-        pa_output%have_aexp_list = .false.
-      endif
-    case default
-      write(*,*) 'Bad news!'
-      stop
-    end select
+    call read_optional_string_parameter(section, &
+      & 'aexp_list',                             &
+      & pa_output%have_aexp_list,                &
+      & pa_output%aexp_list)
+
+    !temp_keyval = section%get('aexp_list', error=.false.)
+    !pa_output%have_aexp_list = .false.
+    !select case(temp_keyval%error_code)
+    !case (KEY_NOT_FOUND)
+    !  ! No axep list, ok
+    !  ! Not really needed, but no "pass" in Fortran...
+    !  pa_output%have_aexp_list = .false.
+    !case (SUCCESS)
+    !  call read_value(temp_keyval, pa_output%aexp_list)
+    !  ! Only sanity check is that an empty value is
+    !  ! counted as no value
+    !  if (len(trim(pa_output%aexp_list)).gt.0) then
+    !    pa_output%have_aexp_list = .true.
+    !  else
+    !    pa_output%have_aexp_list = .false.
+    !  endif
+    !case default
+    !  write(*,*) 'Bad news!'
+    !  stop
+    !end select
+
+    call read_optional_string_parameter(section, &
+      & 'zred_list',                             &
+      & pa_output%have_zred_list,                &
+      & pa_output%zred_list)
 
     if (dump_parameters) then
       write(*,*)
@@ -286,6 +325,10 @@ contains
       if (pa_output%have_aexp_list) then
         call print_kv('aexp_list', pa_output%aexp_list)
       endif
+      if (pa_output%have_zred_list) then
+        call print_kv('zred_list', pa_output%zred_list)
+      endif
+
     end if
 
     ! Get [cosmology] section
@@ -363,6 +406,24 @@ contains
       call print_kv('eps2', pa_tree%eps2)
     end if
     write(*,*)
+
+    ! Get [pfop] section
+    pa_pfop%have_parameters = has_key(toml_content,"pfop") 
+    if (pa_pfop%have_parameters) then
+      section = toml_content%get("pfop")
+      call read_value(section%get('file_path',error=.false.), &
+        &             pa_pfop%file_path, default='')
+      call read_value(section%get('mass_limit', error=.false.), &
+       & pa_pfop%mass_limit, default=PA_PFOP_MASS_LIMIT_DEF)
+      if (dump_parameters) then
+        write(*,*)
+        write(*,*) '[pfop]'
+        call print_kv('pfop_path','')
+        call print_kv('mass_limit',pa_pfop%mass_limit)
+      end if
+      write(*,*)
+    endif
+
   end subroutine parse_parameter_file
   
   ! ############################################################ 
@@ -393,5 +454,41 @@ contains
       write(output_unit, *) 'Unsupported type'
     end select
   end subroutine print_kv
+  
+  ! ############################################################
+  subroutine read_optional_string_parameter(section, param_name, &
+      & have_param_flag, param_store)
+    use, intrinsic :: iso_fortran_env, only: stderr => error_unit
+    use TinyTOML
+    implicit none
+
+    type(toml_object), intent(IN)   :: section
+    character(len=*), intent(IN)    :: param_name
+    logical, intent(INOUT)          :: have_param_flag
+    character(len=:), allocatable, intent(INOUT) :: param_store
+
+    type(toml_object) :: temp_keyval
+    
+    temp_keyval = section%get(param_name, error=.false.)
+    have_param_flag = .false.
+    select case(temp_keyval%error_code)
+    case (KEY_NOT_FOUND)
+      ! No parameter, ok
+      ! Not really needed, but no "pass" in Fortran...
+      have_param_flag = .false.
+    case (SUCCESS)
+      call read_value(temp_keyval, param_store)
+      ! Only sanity check is that an empty value is
+      ! counted as no value
+      if (len(trim(param_store)).gt.0) then
+        have_param_flag = .true.
+      else
+        have_param_flag = .false.
+      endif
+    case default
+      write(*,*) 'Bad news!'
+      stop
+    end select
+  end subroutine read_optional_string_parameter
 
 end module Parameter_File

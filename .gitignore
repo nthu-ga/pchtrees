@@ -7,6 +7,10 @@ examples/progenitors
 data/*/*spline.1
 *.jet.txt
 
+# GNU Profiling
+*.gcov
+*.gprof
+
 # Meson
 subprojects
 
