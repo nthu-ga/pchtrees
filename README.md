@@ -26,7 +26,7 @@ For the original README, see
 code available.
 
 The code in this repository is made available under the same conditions as the
-original PCH code. There is, strictly speaking, no need to acknowledge this repository (although it is appreciated).
+original PCH code. There is, strictly speaking, no need to acknowledge this repository (although it is appreciated). Please note that I am not an author of the orginal code in any way, shape or form. The scientific algorithms in this repository are the work of H. Parkinson, S. Cole and J. Helly.
 
 The code in this repository makes use of a modified version of the TinyTOML parser by
 Thomas Marks under the MIT License (see LICENSE). Link:
