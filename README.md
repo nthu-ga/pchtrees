@@ -26,9 +26,9 @@ For the original README, see
 code available.
 
 The code in this repository is made available under the same conditions as the
-original PCH code. 
+original PCH code. There is strictly, no need to acknowledge this repository, although it is appreciated.
 
-This code make use of a modified version of the TinyTOML parser by
+The code in this repository makes use of a modified version of the TinyTOML parser by
 Thomas Marks under the MIT License (see LICENSE). Link:
 https://github.com/archermarx/TinyTOML
 
