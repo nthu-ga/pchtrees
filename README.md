@@ -20,7 +20,8 @@ For the original README, see
 
 ## Acknowledgement
 
-Work that makes use of this code should reference Parkinson, Cole and Helly
+> [!IMPORTANT]  
+> Work that makes use of this code should reference Parkinson, Cole and Helly
 2008 MNRAS, 383, 557 and also acknowledge the "GALFORM Team" for making the
 code available.
 
