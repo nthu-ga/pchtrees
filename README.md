@@ -116,7 +116,7 @@ the paramter file which must be present if this command line option is used.
 
 The PFOP output file has the following structure:
 
-`/Header`: _Values stored as group attributes:_
+`/Header`: _Values stored as group attributes_
 
 	- `LastSnapShotNr` : Number of tree output levels
 	- `Nhalos_ThisFile` : Number of halos (in this case, progenitors / length of `Progenitors` datasets
@@ -125,17 +125,17 @@ The PFOP output file has the following structure:
     	- `Ntrees_Total` : Number of trees over all files
     	- `NumFiles` : Number of files
 
-`/Mainbranch`             
+`/Mainbranch`       
 
 	- `/Mainbranch/MainbranchMass`:  _The mass of the main branch at each output level (NTREES, NLEV)_
 
-`/OutputTimes` : _Each dataset has one row per output level_
+`/OutputTimes`: _Each dataset has one row per output level_
 
 	- `/OutputTimes/DeltaCrit`: _The critical density at each output time_
 	- `/OutputTimes/ExpansionFactor`: _The expansion factor at each output time_
 	- `/OutputTimes/Redshift`: _The redshift at each output time_
 
-`/Progenitors` :  _Each dataset has one row per merger event, concatenating events in all trees_
+`/Progenitors`: _Each dataset has one row per merger event, concatenating events in all trees_
 
 	- `/Progenitors/HostMass`: _The main branch mass immediately before the merger_
 	- `/Progenitors/MergedMass`: _The main branch mass immediately after the merger_
