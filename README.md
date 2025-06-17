@@ -118,32 +118,36 @@ The PFOP output file has the following structure:
 
 `/Header`: _Values stored as group attributes_
 
-	- `LastSnapShotNr` : Number of tree output levels
-	- `Nhalos_ThisFile` : Number of halos (in this case, progenitors / length of `Progenitors` datasets
-    	- `Nhalos_Total` : Number of halos (in this case, progenitors) over all files
-    	- `Ntrees_ThisFile` : Number of trees / length of `TreeTable` datasets
-    	- `Ntrees_Total` : Number of trees over all files
-    	- `NumFiles` : Number of files
+- `LastSnapShotNr` : Number of tree output levels
+- `Nhalos_ThisFile` : Number of halos (in this case, progenitors / length of `Progenitors` datasets
+- `Nhalos_Total` : Number of halos (in this case, progenitors) over all files
+- `Ntrees_ThisFile` : Number of trees / length of `TreeTable` datasets
+- `Ntrees_Total` : Number of trees over all files
+- `NumFiles` : Number of files
 
 `/Mainbranch` 
-	- `/Mainbranch/MainbranchMass`:  _The mass of the main branch at each output level (NTREES, NLEV)_
+
+- `/Mainbranch/MainbranchMass`:  _The mass of the main branch at each output level (NTREES, NLEV)_
 
 `/OutputTimes`: _Each dataset has one row per output level_
-	- `/OutputTimes/DeltaCrit`: _The critical density at each output time_
-	- `/OutputTimes/ExpansionFactor`: _The expansion factor at each output time_
-	- `/OutputTimes/Redshift`: _The redshift at each output time_
+	
+- `/OutputTimes/DeltaCrit`: _The critical density at each output time_
+- `/OutputTimes/ExpansionFactor`: _The expansion factor at each output time_
+- `/OutputTimes/Redshift`: _The redshift at each output time_
 
 `/Progenitors`: _Each dataset has one row per merger event, concatenating events in all trees_
-	- `/Progenitors/HostMass`: _The main branch mass immediately before the merger_
-	- `/Progenitors/MergedMass`: _The main branch mass immediately after the merger_
-	- `/Progenitors/MergedZred`: _The redshift immediately after the merger_
-	- `/Progenitors/ProgenitorMass`:  _The progenitor mass immediately before the merger_
-	- `/Progenitors/ProgenitorZred`: _The redshift immediately before the merger_
-	- `/Progenitors/TreeID`: _The index in the TreeTable associated with this event_
+	
+- `/Progenitors/HostMass`: _The main branch mass immediately before the merger_
+- `/Progenitors/MergedMass`: _The main branch mass immediately after the merger_
+- `/Progenitors/MergedZred`: _The redshift immediately after the merger_
+- `/Progenitors/ProgenitorMass`:  _The progenitor mass immediately before the merger_
+- `/Progenitors/ProgenitorZred`: _The redshift immediately before the merger_
+- `/Progenitors/TreeID`: _The index in the TreeTable associated with this event_
 
 `/TreeTable`: _Each dataset has one row per tree_
-	- `/TreeTable/NFirstOrderProg`: _The number of first order progenitors in this tree_
-	- `/TreeTable/RootMass`: _The mass of the main branch at the final output level_
-	- `/TreeTable/StartOffset`: _The first offset in the `Progenitors` table for the tree_
-	- `/TreeTable/TreeID`: _The index of this tree (simply the row number)_
+	
+- `/TreeTable/NFirstOrderProg`: _The number of first order progenitors in this tree_
+- `/TreeTable/RootMass`: _The mass of the main branch at the final output level_
+- `/TreeTable/StartOffset`: _The first offset in the `Progenitors` table for the tree_
+- `/TreeTable/TreeID`: _The index of this tree (simply the row number)_
 
