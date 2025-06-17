@@ -151,3 +151,12 @@ The PFOP output file has the following structure:
 - `/TreeTable/StartOffset`: _The first offset in the `Progenitors` table for the tree_
 - `/TreeTable/TreeID`: _The index of this tree (simply the row number)_
 
+## Transfer function
+
+The original PCH code defines four options for the transfer function, here controlled by the `itrans` parameter file option.
+
+`itrans=-1`: Use transfer function tabulated in file pkinfile
+`itrans=1`: Use BBKS CDM transfer function with specified Gamma and Omega0
+`itrans=2`: Use Bond & Efstathiou CDM transfer function with specified Gamma and Omega0
+`itrans=3`: Use Eisenstein and Hu CDM transfer function with specified Omega0, Omegab and h0
+
