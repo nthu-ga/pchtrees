@@ -124,9 +124,11 @@ The PFOP output file has the following structure:
     	- `Ntrees_ThisFile` : Number of trees / length of `TreeTable` datasets
     	- `Ntrees_Total` : Number of trees over all files
     	- `NumFiles` : Number of files
+
 `/Mainbranch`             
 	`/Mainbranch/MainbranchMass`
 	- _The mass of the main branch at each output level (NTREES, NLEV)_
+
 `/OutputTimes`            
 - _Each dataset has one row per output level_
 	`/OutputTimes/DeltaCrit`
@@ -135,6 +137,7 @@ The PFOP output file has the following structure:
 	- _The expansion factor at each output time_
 	`/OutputTimes/Redshift`
 	- _The redshift at each output time_
+
 `/Progenitors` 
 - _Each dataset has one row per merger event, concatenating events in all trees_
 	`/Progenitors/HostMass`
@@ -149,6 +152,7 @@ The PFOP output file has the following structure:
 	- _The redshift immediately before the merger_
 	`/Progenitors/TreeID`
 	- _The index in the TreeTable associated with this event_
+
 `/TreeTable`
 - _Each dataset has one row per tree_
 	`/TreeTable/NFirstOrderProg`
