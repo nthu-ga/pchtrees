@@ -51,7 +51,8 @@ parameters:
 * `HDF5_DIR` should be set to the root directory of an HDF5 (fortran) library
   installation (with the libraries under `/lib` below this path.
 
-If `HDF5_DIR` is not set, the code will be built wihtout support for HDF5 output. Many of the newer features will not work in that case.
+If `HDF5_DIR` is not set, the code will be built without support for HDF5
+output. Many of the newer features will not work in that case.
 
 ## Running
 
@@ -59,20 +60,22 @@ If `HDF5_DIR` is not set, the code will be built wihtout support for HDF5 output
 options.
 
 `./pchtrees --defaults` : Dumps the default parameters to `STDOUT`. You can
-copy this output to create a fiducial parameter file, which you can customize.
+copy this output to create your first parameter file, which you can customize.
 
 Example: `./pchtrees --defaults > my_params.toml`
 
 `./pchtrees parameter_file_path ntrees mphalo ahalo zmax [options]`
 
 Options (positional or by keyword):
+
 * `path   (--path  )` : path to parameter file in TOML format
 * `ntrees (--ntrees)` : integer number of trees to generate (1)
 * `mphalo (--mphalo)` : target mass of tree root notes (1e12 Msol)
 * `ahalo  (--ahalo)`  : Expansion factor at root of tree (1.0)
 * `zmax   (--zmax)`   : highest redshift in tree (4.0)
 
-Options (keyword only)
+Options (keyword only):
+
 * `--verbose` : print more output (for testing/debugging)
 * `--mmax (value)` : if given (with a value), sample ntreees trees between mphalo and mmax (see "Mass sampling")
 * `--loguniform` : if given with mmax, sample uniformly in log10 mass rather than mass (see "Mass sampling")
@@ -98,9 +101,10 @@ main branch.
 
 This is likely most useful in combinations with `--no-output-trees`, to
 generate only the first order progenitor information without saving a great
-deal of additional data on each tree. If the trees are saved, information
-about the progenitors can be retrieved by postprocesing. However, there may
-also be cases where it is more efficient to have this code summarise the properties of first-order mergers directly.
+deal of additional data on each tree. If the trees are saved, information about
+the progenitors can be retrieved by postprocesing. However, there may also be
+cases where it is more efficient to have this code summarise the properties of
+first-order mergers directly.
 
 The behavior of this option is controlled by a section `[pfop]` in
 the paramter file which must be present if this command line option is used.
