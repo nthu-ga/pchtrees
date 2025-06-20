@@ -618,14 +618,16 @@ contains
     integer :: iprog, imain
     integer :: n_merge
 
-    real, allocatable :: mprog(:), zprog(:), mhost(:), mmerged(:), zmerged(:)
-    real, allocatable :: main_branch_mass(:,:)
+    integer, allocatable :: jprog(:)
+    real, allocatable    :: mprog(:), zprog(:), mhost(:), mmerged(:), zmerged(:)
+    real, allocatable    :: main_branch_mass(:,:)
 
     integer, parameter :: GUESS_NPROG = 1e6
 
     allocate(mprog(GUESS_NPROG),   source=-1.0)
     allocate(mhost(GUESS_NPROG),   source=-1.0)
     allocate(zprog(GUESS_NPROG),   source=-1.0)
+    allocate(jprog(GUESS_NPROG),   source=-1.0)
     allocate(mmerged(GUESS_NPROG), source=-1.0)
     allocate(zmerged(GUESS_NPROG), source=-1.0)
     
@@ -669,6 +671,7 @@ contains
             mprog(iprog)   = sibling_node%mhalo
             mhost(iprog)   = child_node%mhalo
             zprog(iprog)   = 1.0/alev(child_node%jlevel) - 1
+            jprog(iprog)   = child_node%jlevel
             mmerged(iprog) = This_Node%mhalo
             zmerged(iprog) = 1.0/alev(this_node%jlevel) - 1
           endif above_mass_limit 
@@ -693,13 +696,14 @@ contains
     ! Output
     nfop = iprog
     call write_pfop_hdf5(filename, tree_id, & 
-      &  mprog(1:iprog), mhost(1:iprog), zprog(1:iprog), mmerged(1:iprog), zmerged(1:iprog), &
+      &  mprog(1:iprog), mhost(1:iprog), zprog(1:iprog), jprog(1:iprog), mmerged(1:iprog), zmerged(1:iprog), &
       &  main_branch_mass)
 
     ! In principle this memory could be re-used...
     deallocate(mprog)
     deallocate(mhost)
     deallocate(zprog)
+    deallocate(jprog)
     deallocate(mmerged)
     deallocate(zmerged)
 

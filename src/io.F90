@@ -32,6 +32,7 @@ module IO
   ! For PFOP
   character(*), parameter :: DSET_PFOP_PROG_MASS   = "/Progenitors/ProgenitorMass"
   character(*), parameter :: DSET_PFOP_PROG_ZRED   = "/Progenitors/ProgenitorZred"
+  character(*), parameter :: DSET_PFOP_PROG_JLEV   = "/Progenitors/ProgenitorIlev"
   character(*), parameter :: DSET_PFOP_HOST_MASS   = "/Progenitors/HostMass"
   character(*), parameter :: DSET_PFOP_MERGED_MASS = "/Progenitors/MergedMass"
   character(*), parameter :: DSET_PFOP_MERGED_ZRED = "/Progenitors/MergedZred"
@@ -261,7 +262,9 @@ contains
     dataset_type = H5T_NATIVE_INTEGER
     call create_extensible_dataset(filename, DSET_PFOP_TREE_ID,     dataset_type, &
       & N_min, N_max, hdferr)
-
+    call create_extensible_dataset(filename, DSET_PFOP_PROG_JLEV,   dataset_type, &
+      & N_min, N_max, hdferr)
+    
     dataset_type = H5T_NATIVE_REAL
     call create_extensible_dataset(filename, DSET_PFOP_PROG_MASS,   dataset_type, &
       & N_min, N_max, hdferr)
@@ -505,13 +508,14 @@ contains
   
   
   ! ############################################################
-  subroutine write_pfop_hdf5(filename, tree_id,                   &
-      &                      mprog, mhost, zred, mmerged, zmerged,&
+  subroutine write_pfop_hdf5(filename, tree_id,                            &
+      &                      mprog, mhost, zred, jprog, mmerged, zmerged,&
       &                      main_branch_mass)
     implicit none
     ! Filename can be char(len=*) or hid_t
     class(*), intent(IN) :: filename
     integer,  intent(IN) :: tree_id
+    integer,  intent(IN) :: jprog(:)
     real, intent(IN) :: mprog(:), mhost(:), zred(:), mmerged(:), zmerged(:)
     real, intent(IN) :: main_branch_mass(:,:)
 
@@ -524,6 +528,8 @@ contains
     call append_to_dataset(filename, DSET_PFOP_PROG_MASS,   mprog,    hdferr)
     call append_to_dataset(filename, DSET_PFOP_HOST_MASS,   mhost,    hdferr)
     call append_to_dataset(filename, DSET_PFOP_PROG_ZRED,   zred,     hdferr)
+    ! jprog is %jlevel, hence fortran-1-based; convert to 0-based for output
+    call append_to_dataset(filename, DSET_PFOP_PROG_JLEV,   jprog-1,  hdferr)
     call append_to_dataset(filename, DSET_PFOP_MERGED_MASS, mmerged,  hdferr)
     call append_to_dataset(filename, DSET_PFOP_MERGED_ZRED, zmerged,  hdferr)
     
