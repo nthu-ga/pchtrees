@@ -627,7 +627,7 @@ contains
     allocate(mprog(GUESS_NPROG),   source=-1.0)
     allocate(mhost(GUESS_NPROG),   source=-1.0)
     allocate(zprog(GUESS_NPROG),   source=-1.0)
-    allocate(jprog(GUESS_NPROG),   source=-1.0)
+    allocate(jprog(GUESS_NPROG),   source=-1)
     allocate(mmerged(GUESS_NPROG), source=-1.0)
     allocate(zmerged(GUESS_NPROG), source=-1.0)
     
