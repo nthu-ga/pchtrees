@@ -32,7 +32,7 @@ contains
 
     ! Floats
     real :: a !,dldelcdlt
-    real :: delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t,acosh
+    real :: delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t
     real, save :: omega0_save  = 0.0
     real, save :: lambda0_save = 0.0
   
@@ -48,8 +48,8 @@ contains
     
     ! Code     
     if (abs(1.0-omega0).le.EPSOM) then ! Omega_0=1
-      delc0=3.0*(12.0*PI)**(2.0/3.0)/20.0
-      deltcrit=delc0/a
+      delc0    = 3.0*(12.0*PI)**(2.0/3.0)/20.0
+      deltcrit = delc0/a
       !dldelcdlt=-2.0/3.0
     else if ((1.0-omega0).gt.EPSOM.and.lambda0.lt.EPSOM) then ! Omega_0<1 Lambda_0=0
       ! Calculate properties at t=t0.
