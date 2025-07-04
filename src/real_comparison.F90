@@ -21,9 +21,19 @@ contains
         real(real32) :: epsilon_abs, epsilon_rel, diff, scale
 
         ! Default tolerances based on machine precision
-        epsilon_abs = merge(abs_tol, 1.0e-6_real32, present(abs_tol))
-        epsilon_rel = merge(rel_tol, 1.0e-5_real32, present(rel_tol))
-
+        if (present(abs_tol)) then
+          epsilon_abs = abs_tol
+        else
+          epsilon_abs = 1.0e-6_real32
+        end if
+        
+        ! Default tolerances based on machine precision
+        if (present(rel_tol)) then
+          epsilon_rel = rel_tol
+        else
+          epsilon_rel = 1.0e-5_real32
+        end if
+        
         diff = abs(a - b)
         scale = max(abs(a), abs(b), 1.0_real32)
 
@@ -38,8 +48,18 @@ contains
         real(real64) :: epsilon_abs, epsilon_rel, diff, scale
 
         ! Default tolerances based on machine precision
-        epsilon_abs = merge(abs_tol, 1.0e-12_real64, present(abs_tol))
-        epsilon_rel = merge(rel_tol, 1.0e-10_real64, present(rel_tol))
+        if (present(abs_tol)) then
+          epsilon_abs = abs_tol
+        else
+          epsilon_abs = 1.0e-12_real64
+        end if
+        
+        ! Default tolerances based on machine precision
+        if (present(rel_tol)) then
+          epsilon_rel = rel_tol
+        else
+          epsilon_rel = 1.0e-10_real64
+        end if
 
         diff = abs(a - b)
         scale = max(abs(a), abs(b), 1.0_real64)
@@ -58,9 +78,19 @@ contains
         ! Promote single-precision input to double
         a_dbl = real(a, kind=real64)
 
-        ! Default tolerances based on double precision
-        epsilon_abs = merge(abs_tol, 1.0e-12_real64, present(abs_tol))
-        epsilon_rel = merge(rel_tol, 1.0e-10_real64, present(rel_tol))
+        ! Default tolerances based on machine precision
+        if (present(abs_tol)) then
+          epsilon_abs = abs_tol
+        else
+          epsilon_abs = 1.0e-12_real64
+        end if
+        
+        ! Default tolerances based on machine precision
+        if (present(rel_tol)) then
+          epsilon_rel = rel_tol
+        else
+          epsilon_rel = 1.0e-10_real64
+        end if
 
         diff = abs(a_dbl - b)
         scale = max(abs(a_dbl), abs(b), 1.0_real64)
