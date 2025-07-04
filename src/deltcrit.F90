@@ -33,21 +33,19 @@ contains
     ! Floats
     real :: a !,dldelcdlt
     real :: delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t,acosh
-    real :: omega0_save,lambda0_save
+    real, save :: omega0_save  = 0.0
+    real, save :: lambda0_save = 0.0
+  
     real :: density,omflat(NV),delflat(NV),aflat(NTABLE),delta_flat(NTABLE),sum,dlin,dlin0,x,x0,xp,dxp,h,aa,lambda,omega
     
     ! Parameters
-    real, parameter :: AMIN=0.1
-    real, parameter :: EPSOM=1.0e-5
-    real, parameter :: NSUM=2000
+    real,    parameter :: AMIN=0.1
+    real,    parameter :: EPSOM=1.0e-5
+    integer, parameter :: NSUM=2000
     
     ! Saves
-    save aflat,delta_flat,lambda0_save,omega0_save
-    !
-    ! Data
-    data omega0_save/0.0/
-    data lambda0_save/0.0/
-    !
+    save aflat,delta_flat 
+    
     ! Code     
     if (abs(1.0-omega0).le.EPSOM) then ! Omega_0=1
       delc0=3.0*(12.0*PI)**(2.0/3.0)/20.0
