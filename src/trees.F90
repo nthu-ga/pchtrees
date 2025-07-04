@@ -225,7 +225,7 @@ program tree
     stop
   endif
 
-  ! Set the variables in the cosmological parameters module from the parameter
+  ! Set the variables defined in the cosmological-parameters module, using the parameter
   ! file values.
 
   ! TODO these module variables should be better named with a prefix or

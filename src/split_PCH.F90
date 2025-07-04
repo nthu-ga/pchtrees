@@ -153,10 +153,6 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
 
   !
   ! Code
-#ifdef DEBUG
-  write (0,*) 'split(): DEBUG - start'
-#endif
-
   ! For brevity, copy the parameter values to local variables
   G0      = pa_tree%G0
   gamma_1 = pa_tree%gamma_1
@@ -380,9 +376,6 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
      end if
      mprog(2)=0
   end if
-#ifdef DEBUG
-  write (0,*) 'split(): DEBUG - done'
-#endif
   return
 end subroutine split
 

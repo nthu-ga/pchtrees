@@ -300,10 +300,6 @@ subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragt
   data inodemax /0/ ! Init value for max no of nodes
   ! 
   ! Code
-#ifdef DEBUG
-  write (0,*) 'make_tree(): DEBUG - starting'
-#endif
-  !
   ! Create storage arrays
   if (inodemax.eq.0) then
      inodemax=2000
@@ -316,7 +312,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [mr]'
      allocate(lnode(inodemax),stat=alloc_err)
 if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]'
      mbytes=real(inodemax*(4*3+1))/real(1024**2)
-     write(*,'(a,f7.3,a)') 'make_tree(): internal storage = ',mbytes,' Mbytes' 
+     write(*,'(1x,a,f7.3,a)') 'make_tree(): internal storage = ',mbytes,' Mbytes' 
   end if
 
 !write(*,*)'created storage arrays'
@@ -339,58 +335,65 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]
 #ifdef DEBUG
   write (0,*) 'make_tree(): DEBUG - creating array of values of w=deltcrit(a)'
 #endif
-  !
+  
   ! deltcrit function calcs threshold linear overdensity for collapse at epoch a
   ! Create array of values of w=deltcrit(a) at which output tree info. 
-  alev(1)=a0 ! Enforce this!
-  do ilev=1,nlev
-     wlev(ilev)=deltcrit(alev(ilev))
+  alev(1) = a0 ! Enforce this!
+  do ilev = 1, nlev
+#ifdef DEBUG
+    write (0,*) 'make_tree(): DEBUG - ilev', ilev, 'alev(ilev)', alev(ilev)
+#endif
+    wlev(ilev) = deltcrit(alev(ilev))
   enddo
   inode = 1
+
 #ifdef DEBUG
-  write (0,*) 'mke_tree(): DEBUG - done creating array of values of w=deltcrit(a)'
+  write (0,*) 'make_tree(): DEBUG - done creating array of values of w=deltcrit(a)'
+  write (0,*) 'make_tree(): DEBUG - building binary tree'
 #endif
-  !
+  
   ! Make binary tree.
-  ! 
+  
   ! ml and mr are masses of "left" and "right" forks.
   ! ml=-1 or mr=-1 indicates that fork empty (m<mmin)
   ! branch ends because either (a) m<mmin or (b) w>wfin
   ! 
-  wfin=wlev(nlev) ! Earliest output time.
-  ! 
+  wfin = wlev(nlev) ! Earliest output time.
+  
   ! Initialize array of "active" fragments.
-  ifraglev(:)=-1
-  ! 
+  ifraglev(:) = -1
+   
   ! Base (root) of tree (a=a0)
-  inode=1
-  ml(1)=m0
-  mr(1)=-1 ! No right fork
-  m=m0
-  wnode(1)=wlev(1)
-  w=wlev(1)
-  ilev=2 ! Next output level up tree
-  ifraglev(1)=1 ! Active fragment at ilev=1
-  ! 
-  ifrag=1
-  mtr(1)=m0
-  ! 
-  ipar(1)=-1
-  isib(1)=-1
-  ichild(1)=-1
-  ! 
+  inode = 1
+  ml(1) = m0
+  mr(1) = -1 ! No right fork
+  
+  m = m0
+  wnode(1) = wlev(1)
+  w        = wlev(1)
+
+  ilev = 2 ! Next output level up tree
+  ifraglev(1) = 1 ! Active fragment at ilev=1
+  
+  ifrag     = 1
+  mtr(1)    = m0 
+  ipar(1)   = -1
+  isib(1)   = -1
+  ichild(1) = -1
+   
 #ifdef DEBUG
   max_inode=0 ! Count max no of nodes
 #endif
-  ! 
+  
   do while(ml(inode).gt.0.0) ! ml=-1 signals end of branch.
-     dwmax=wlev(ilev)-w
-     ! Take step up tree (back in time) by binary split.
-     call split(m,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
-     w=w+dw
-     !
-     select case (nprog)
-     case (2) ! Create new node.
+    dwmax = wlev(ilev) - w
+
+    ! Take step up tree (back in time) by binary split.
+    call split(m,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
+    w = w + dw
+
+    select case (nprog)
+      case (2) ! Create new node.
         inode=inode+1
 #ifdef DEBUG
         max_inode=max(inode,max_inode)
@@ -542,7 +545,11 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
      end do
   end do
 
-  nfragtot=ifrag ! Total number of fragments in tree.
+#ifdef DEBUG
+  write (0,*) 'make_tree(): DEBUG - rearranging tree'
+#endif
+
+nfragtot=ifrag ! Total number of fragments in tree.
   ! 
   ! Now re-arrange reduced tree.
   ! 
@@ -700,9 +707,6 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory&
   ! 
   ierr=0 ! Routine successful
   ! 
-#ifdef DEBUG
-  write (0,*) 'make_tree(): DEBUG - done'
-#endif
   return
 end subroutine make_tree
 
