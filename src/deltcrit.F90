@@ -24,22 +24,24 @@ contains
     !  dldelcdlt = dln(delc)/dln(t)     
     !
     ! Array dimensions
-    integer NTABLE,NV
-    parameter (NTABLE=200,NV=1000)
-    !
+    integer, parameter :: NTABLE=200
+    integer, parameter :: NV=1000
+    
     ! Integers
-    integer i,io,is,NSUM
-    !
+    integer :: i,io,is,NSUM
+    
     ! Floats
-    real a !,dldelcdlt
-    REAL EPSOM,delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t,acosh
-    REAL AMIN
-    REAL omega0_save,lambda0_save
-    REAL density,omflat(NV),delflat(NV),aflat(NTABLE),delta_flat(NTABLE),sum,dlin,dlin0,x,x0,xp,dxp,h,aa,lambda,omega
-    !
+    real :: a !,dldelcdlt
+    real :: delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t,acosh
+    real :: AMIN
+    real :: omega0_save,lambda0_save
+    real :: density,omflat(NV),delflat(NV),aflat(NTABLE),delta_flat(NTABLE),sum,dlin,dlin0,x,x0,xp,dxp,h,aa,lambda,omega
+    
     ! Parameters
-    parameter (AMIN=0.1,EPSOM=1.0e-5,NSUM=2000)
-    !
+    real, parameter :: AMIN=0.1
+    real, parameter :: EPSOM=1.0e-5
+    real, parameter :: NSUM=2000
+    
     ! Saves
     save aflat,delta_flat,lambda0_save,omega0_save
     !
