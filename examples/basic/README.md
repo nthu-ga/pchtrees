@@ -1,5 +1,7 @@
+# Basic example
+
 To run the test in this directory, first compile a pchtrees executable (see the
-main README). Then run `./run_basic_example.sh` in your shell.
+main README). Then run `./run_basic_test.sh` in your shell.
 
 The ./pchtree symlink in this examples directory will only work if your main
 directory is two levels above this one, and contains your pchtree binary. This
