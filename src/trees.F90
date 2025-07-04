@@ -84,6 +84,9 @@ program tree
   integer, allocatable :: trees_nfop(:)
   real                 :: fop_mass_limit
 
+  ! Validation
+  logical :: data_path_exists
+  
   ! Parse the command line
   call read_command_line_args()
 
@@ -209,6 +212,16 @@ program tree
   if ((nlev.le.0).and.(.not.(pa_output%have_aexp_list.or.pa_output%have_zred_list))) then
     write(*,*)
     write(*,*) 'FATAL: nlev <= 0 -- this is nonsense, what are you doing?!'
+    stop
+  endif
+
+  ! Validate that the data directory exists
+  inquire(file=trim(pa_runtime%data_path), exist=data_path_exists)
+  if (.not.data_path_exists) then
+    write(0,*)
+    write(0,*) "Error! The pchtrees data directory was not found at the following path:"
+    write(0,*) trim(pa_runtime%data_path)
+    write(0,*) "Find out where the data directory is and update your parameter file!" 
     stop
   endif
 
@@ -740,7 +753,7 @@ contains
     nlines = 0
     open(newunit=unit_num, file=trim(path), status="old", action="read", iostat=ierr)
     if (ierr /= 0) then
-        write(*,*) "Error opening expansion factor list!"
+        write(0,*) "Error opening expansion factor list!"
         stop
     end if
 
