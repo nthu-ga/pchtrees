@@ -54,6 +54,10 @@ parameters:
 If `HDF5_DIR` is not set, the code will be built without support for HDF5
 output. Many of the newer features will not work in that case.
 
+> [!TIP]  
+> On MacOS with HDF5 installed using homebrew, you probably want `HDF5_DIR=/opt/homebrew`
+
+
 ## Running
 
 `./pchtrees` : Prints a usage message with information about the command line
