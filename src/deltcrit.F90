@@ -28,12 +28,11 @@ contains
     integer, parameter :: NV=1000
     
     ! Integers
-    integer :: i,io,is,NSUM
-    
+    integer :: i,io,is
+
     ! Floats
     real :: a !,dldelcdlt
     real :: delc0,eta0,sh0,ch0,tomega,d0,ch,sh,eta,t,acosh
-    real :: AMIN
     real :: omega0_save,lambda0_save
     real :: density,omflat(NV),delflat(NV),aflat(NTABLE),delta_flat(NTABLE),sum,dlin,dlin0,x,x0,xp,dxp,h,aa,lambda,omega
     
