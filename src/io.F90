@@ -417,6 +417,9 @@ contains
     call write_group_attr(group_id, 'cosmo_CMBT0', pa_cosmo%CMB_T0)
 
     ! From power_spectrum_parameters
+    ! 
+    ! Here we write the module variables, rather than the parameter file values (which
+    ! are just used to initialize those module variables)
     call write_group_attr(group_id, 'pspec_itrans', itrans)
     call write_group_attr(group_id, 'pspec_gamma', gamma)
     call write_group_attr(group_id, 'pspec_kref', kref)

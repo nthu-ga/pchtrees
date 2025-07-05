@@ -231,9 +231,13 @@ program tree
   ! TODO these module variables should be better named with a prefix or
   ! something.
 
+  ! TODO: They *could* just be pulled directly from the parameters structure where
+  ! needed, but this makes the code slighlty less readable, and mean all the other
+  ! modules have to depend on the parameters module. Well, that's one option.
+
   ! FUTURE: consider a neater / more robust way to do this initialization, but
   ! without introducing unnecessary module dependencies.
-  
+
   omega0  = pa_cosmo%omega0
   lambda0 = pa_cosmo%lambda0
   h0      = pa_cosmo%h0
@@ -242,7 +246,10 @@ program tree
 
   ! Set variables in the power spectrum parameters module.
   !
-  ! FUTURE: see above for cosmological parameters.
+  ! FUTURE: see above description for cosmological parameters.
+  
+  ! N.B. the gamma here is the transfer function gamma, not to be confused with the PCH
+  ! gammas.
 
   itrans = pa_powerspec%itrans
   nspec  = pa_powerspec%nspec
@@ -250,6 +257,11 @@ program tree
   kref   = pa_powerspec%kref
   gamma  = pa_powerspec%gamma
   sigma8 = pa_powerspec%sigma8
+  
+  pkinfile = trim(pa_runtime%data_path)//'/'//trim(pa_powerspec%pkinfile)
+  if (itrans < 0) then
+    write (0,*) 'Using tabulated P(k) in ', trim(pkinfile)
+  endif
 
   ! Set initial random seed
   iseed0 = pa_runtime%iseed
