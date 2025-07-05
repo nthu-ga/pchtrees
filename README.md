@@ -21,14 +21,14 @@ For the original README, see
 ## Acknowledgement
 
 > [!IMPORTANT]  
-> Work that makes use of this code should reference Parkinson, Cole and Helly
+> Work that makes use of this code should cite Parkinson, Cole and Helly
 2008 MNRAS, 383, 557 and also acknowledge the "GALFORM Team" for making the
 code available.
 
 The code in this repository is made available under the same conditions as the
 original PCH code. There is, strictly speaking, no need to acknowledge this
-repository (although it is appreciated). Please note that I (the author of this
-wrapper code)  am *not* an author of the orginal code. All the 'scientific'
+repository (although it is appreciated). Please note that I (APC, the author of the
+wrapper code in this repository) am *not* an author of the orginal code. All the 'scientific'
 algorithms in this repository are the work of H. Parkinson, S. Cole and J.
 Helly.
 
@@ -57,7 +57,6 @@ output. Many of the newer features will not work in that case.
 > [!TIP]  
 > On MacOS with HDF5 installed using homebrew, you probably want `HDF5_DIR=/opt/homebrew`
 
-
 ## Running
 
 `./pchtrees` : Prints a usage message with information about the command line
@@ -68,13 +67,15 @@ copy this output to create your first parameter file, which you can customize.
 
 Example: `./pchtrees --defaults > my_params.toml`
 
+A typical command line is:
+
 `./pchtrees parameter_file_path ntrees mphalo ahalo zmax [options]`
 
 Options (positional or by keyword):
 
 * `path   (--path  )` : path to parameter file in TOML format
 * `ntrees (--ntrees)` : integer number of trees to generate (1)
-* `mphalo (--mphalo)` : target mass of tree root notes (1e12 Msol)
+* `mphalo (--mphalo)` : target mass of tree root nodes (1e12 Msol)
 * `ahalo  (--ahalo)`  : Expansion factor at root of tree (1.0)
 * `zmax   (--zmax)`   : highest redshift in tree (4.0)
 
