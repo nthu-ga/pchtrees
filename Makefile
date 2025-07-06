@@ -115,7 +115,7 @@ ${BUILD_DIR}/parameter_file.o: $(addprefix $(BUILD_DIR)/, tinytoml.o)
 ${BUILD_DIR}/sigmacdm_spline.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o power_spectrum.o parameter_file.o file_utils.o)
 ${BUILD_DIR}/deltcrit.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o parameter_file.o real_comparison.o)
 ${BUILD_DIR}/tree_routines.o: $(addprefix $(BUILD_DIR)/, defined_types.o)
-${BUILD_DIR}/split_PCH.o: $(addprefix $(BUILD_DIR)/, time_parameters.o run_statistics.o real_comparison.o)
+${BUILD_DIR}/split_PCH.o: $(addprefix $(BUILD_DIR)/, time_parameters.o run_statistics.o real_comparison.o sigmacdm_spline.o)
 ${BUILD_DIR}/make_tree.o: $(addprefix $(BUILD_DIR)/, run_statistics.o real_comparison.o)
 ${BUILD_DIR}/trees.o: $(addprefix $(BUILD_DIR)/, defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o cosmological_parameters.o runtime_parameters.o split_PCH.o sigmacdm_spline.o)
 

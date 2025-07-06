@@ -255,7 +255,7 @@ contains
   end subroutine Build_Sibling_Pointers
 end module Make_Tree_Module
 
-subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragtot,nfraglev,jpfrag&
+subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,nfragmax,ierr,nfragtot,nfraglev,jpfrag&
      &,wlev,ifraglev)
   !
   ! Uses
@@ -286,13 +286,10 @@ subroutine make_tree(m0,a0,mmin,alev,nlev,iseed,split,sigma,nfragmax,ierr,nfragt
   !
   ! Parameters
   parameter (MAXNODES=1e7) ! Absolute limit on number of nodes.
-  !
-  ! Functions
-  real sigma 
-  !
+  
   ! Externals
-  external split,sigma
-  !
+  external split
+  
   ! Saves
   save inodemax
   !
@@ -389,7 +386,7 @@ if (alloc_err.ne.0) stop 'make_tree(): FATAL - failed to allocate memory [lnode]
     dwmax = wlev(ilev) - w
 
     ! Take step up tree (back in time) by binary split.
-    call split(m,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
+    call split(m,w,mmin,iseed,dwmax,dw,nprog,mprog) 
     w = w + dw
 
     select case (nprog)

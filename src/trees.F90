@@ -476,7 +476,7 @@ program tree
       ! Build the tree
       write(*,*) 'Making tree:', mphalo
       call make_tree(mphalo,ahalo,pa_output%mres,alev,nlev,&
-        & iseed,split,sigmacdm, &
+        & iseed,split, &
         & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
 
       iter=iter+1
