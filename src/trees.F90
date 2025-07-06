@@ -1,7 +1,7 @@
 program tree
   use Defined_Types ! defined_types.F90
   use Cosmological_Parameters ! cosmological_parameters.F90
-  use Power_Spectrum_Parameters ! parameters.F90
+  use Power_Spectrum
   use Runtime_Parameters
   use Time_Parameters ! parameters.F90
   use Tree_Memory_Arrays ! memory_modules.F90
@@ -12,6 +12,8 @@ program tree
   use Parameter_File
   use IO
   use Commandline
+  use Sigmacdm_Spline
+  use Split_PCH
 #ifdef WITH_HDF5
   use HDF5
 #endif
@@ -27,10 +29,10 @@ program tree
   real,    allocatable :: wlev(:)
   real,    allocatable :: alev(:)
   integer, allocatable :: ifraglev(:)
-  real :: mphalo,ahalo,sigmacdm,zmin,zmax
+  real    :: mphalo,ahalo,zmin,zmax
   integer :: ierr,nhalomax,nhalo
   integer :: iter, iseed
-  EXTERNAL sigmacdm,split
+  !EXTERNAL sigmacdm,split
 
   integer, allocatable :: nhalolev(:)
   integer, allocatable :: jphalo(:)

@@ -5,7 +5,7 @@ module IO
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
   use Cosmological_Parameters
-  use Power_Spectrum_Parameters
+  use Power_Spectrum
   use Runtime_Parameters
   use Parameter_File
   use Overdensity
@@ -383,6 +383,21 @@ contains
     deallocate(tree_property)
 
   end subroutine write_tree_table
+  
+  ! ############################################################ 
+  !subroutine write_power_specturm(filename)
+  !  implicit none
+
+  !  character(len=*), intent(in)  :: filename      ! HDF5 file name
+  !  character(len=*) :: dataset_name  
+  !    
+  !  integer(hid_t) :: file_id, group_id
+  !  integer :: hdferr
+
+  !  call write_1d_array_real(filename, '/Powerspec/k',  global_k)
+  !  call write_1d_array_real(filename, '/Powerspec/Pk', global_Pk)
+  !
+  !end subroutine write_power_specturm
 
   ! ############################################################ 
   subroutine write_parameters(filename)
@@ -849,7 +864,6 @@ contains
     call h5dclose_f(dset_id, hdferr)
     call h5fclose_f(file_id, hdferr)
   end subroutine create_extensible_dataset_2d
-
 
   ! ############################################################
   subroutine append_to_dataset(filename, dataset_name, new_data, hdferr)

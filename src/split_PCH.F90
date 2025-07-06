@@ -1,4 +1,11 @@
-!
+module Split_PCH
+  
+  implicit none
+
+  public :: split
+
+contains 
+
 ! split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
 !
 ! This version has been modified to allow a factor
@@ -379,3 +386,4 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   return
 end subroutine split
 
+end module Split_PCH
