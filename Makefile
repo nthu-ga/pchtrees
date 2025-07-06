@@ -16,14 +16,14 @@ FC = gfortran
 COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
-HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
+HDF5_DIR := /opt/homebrew
 
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
 
 # Watch out for trailing whitespace in variables set by the end user...
 ifeq ($(strip $(BUILD_TYPE)), DEBUG)
-    FPP_FLAGS += -DDEBUG
+    FPP_FLAGS += -DDEBUG -DINFO
 endif
 
 ifeq ($(strip $(BUILD_TYPE)), DEBUG)
@@ -39,9 +39,8 @@ ifeq ($(strip $(BUILD_TYPE)), DEVELOP_FIXES)
     FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
 endif
 
-
 ifeq ($(strip $(BUILD_TYPE)), OPT)
-    FC_FLAGS := -O3 -fimplicit-none
+    FC_FLAGS := -O3 -fimplicit-none -fbacktrace -g 
 endif
 
 ifeq ($(strip $(BUILD_TYPE)), OPT_PROFILE)
@@ -105,18 +104,19 @@ $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.F90
 # Dependencies
 ${BUILD_DIR}/defined_types.o: $(addprefix $(BUILD_DIR)/,kind_numbers.o)
 ${BUILD_DIR}/memory_modules.o: $(addprefix $(BUILD_DIR)/,defined_types.o)
-${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum_parameters.o)
+${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum.o)
 ${BUILD_DIR}/indexxx.o: $(addprefix $(BUILD_DIR)/, num_pars.o)
 ${BUILD_DIR}/memory.o: $(addprefix $(BUILD_DIR)/, memory_modules.o)
 ${BUILD_DIR}/interp.o: $(addprefix $(BUILD_DIR)/, real_comparison.o)
-${BUILD_DIR}/transfer_function.o: $(addprefix $(BUILD_DIR)/, real_comparison.o)
+${BUILD_DIR}/power_spectrum.o: $(addprefix $(BUILD_DIR)/, real_comparison.o cosmological_parameters.o num_pars.o parameter_file.o)
+# ${BUILD_DIR}/transfer_function_routines.o: $(addprefix $(BUILD_DIR)/, real_comparison.o sigmacdm_spline.o cosmologica_parameters.o power_spectrum.o)
 ${BUILD_DIR}/parameter_file.o: $(addprefix $(BUILD_DIR)/, tinytoml.o)
-${BUILD_DIR}/sigmacdm_spline.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o power_spectrum_parameters.o parameter_file.o)
+${BUILD_DIR}/sigmacdm_spline.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o power_spectrum.o parameter_file.o file_utils.o)
 ${BUILD_DIR}/deltcrit.o: $(addprefix $(BUILD_DIR)/, num_pars.o cosmological_parameters.o parameter_file.o real_comparison.o)
 ${BUILD_DIR}/tree_routines.o: $(addprefix $(BUILD_DIR)/, defined_types.o)
 ${BUILD_DIR}/split_PCH.o: $(addprefix $(BUILD_DIR)/, time_parameters.o run_statistics.o real_comparison.o)
 ${BUILD_DIR}/make_tree.o: $(addprefix $(BUILD_DIR)/, run_statistics.o real_comparison.o)
-${BUILD_DIR}/trees.o: $(addprefix $(BUILD_DIR)/, defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o cosmological_parameters.o runtime_parameters.o)
+${BUILD_DIR}/trees.o: $(addprefix $(BUILD_DIR)/, defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o cosmological_parameters.o runtime_parameters.o split_PCH.o sigmacdm_spline.o)
 
 # Rule for making the executable
 pchtrees: $(OBJECTS)
