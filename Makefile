@@ -16,7 +16,8 @@ FC = gfortran
 COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
-HDF5_DIR := /opt/homebrew
+#HDF5_DIR := /opt/homebrew
+HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
 
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
