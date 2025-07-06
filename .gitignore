@@ -2,6 +2,7 @@
 pchtrees
 Data/Power_Spec/*
 hardcopy.*
+*.hdf5
 
 examples/progenitors
 data/*/*spline.1
