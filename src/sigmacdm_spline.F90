@@ -4,6 +4,7 @@ module Sigmacdm_Spline
   use Power_Spectrum
   use Parameter_File
   use File_Utils
+
   implicit none
   !     This is the top-level routine for computing sigma(M).
   !     It returns both sigma and alpha = dln(sigma)/dlnM.
@@ -41,17 +42,17 @@ contains
 
   real function sigmacdm(m, alpha, reset)
     implicit none
-    !
+    
     real, intent(in)  :: m
-    real, intent(out) :: alpha
+    real, intent(in)  :: alpha
     logical, intent(in), optional :: reset
 
-    real :: ms, m8, sigma
-    
+    real :: ms, m8, sigma, alpha_power_law
+
     logical, save :: first_call = .true.
     logical       :: resetting
 
-    resetting = .false. 
+    resetting = .false.
     if (present(reset)) then
       if (reset) then
         resetting = .true.
@@ -103,8 +104,10 @@ contains
     ms=m*sclm
     select case (itrans)
     case (0) ! Power-law P(k)
-       alpha    = -(nspec+3.0)/6.0
-       sigmacdm = scla*(ms**alpha)
+        ! APC: this was previously an abuse of the function parameter alpha, but
+        ! APC: no matter, because this case was invalid anyway.
+       alpha_power_law = -(nspec+3.0)/6.0
+       sigmacdm = scla*(ms**alpha_power_law)
     case default ! CDM or WDM or tabulated
        ! Use spline fit
        call spline_interp(ms,sigma,alpha)
