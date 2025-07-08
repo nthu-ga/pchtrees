@@ -211,7 +211,11 @@ program tree
   ! Sanity check that we're going to have some levels
   if ((nlev.le.0).and.(.not.(pa_output%have_aexp_list.or.pa_output%have_zred_list))) then
     write(*,*)
-    write(*,*) 'FATAL: nlev <= 0 -- this is nonsense, what are you doing?!'
+    write(*,*) 'FATAL: nlev <= 0. Either set nlev in the parameter file (under [output])'
+    write(*,*) '       or specifiy --nlev=... on the command line.' 
+    write(*,*)
+    write(*,*) '       If in doubt, nlev=128 is a reasonable value.'
+    write(*,*)
     stop
   endif
 
