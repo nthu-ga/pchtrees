@@ -36,7 +36,10 @@ module Sigmacdm_Spline
   ! Number of spline evaluation points
   integer, parameter :: NSPL=200
 
-  public :: sigmacdm
+  ! Path to tabulated spline fit
+  character(len=220)  :: splinefile
+  
+  public :: sigmacdm, splinefile
 
 contains
 
@@ -70,22 +73,22 @@ contains
        
       m8 = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
       transfer_function: select case (itrans)
-      case (:-1) ! Read P(k) from input file.
-        if (.not.pkfile_read) then
-          call read_pkfile()
-        endif
+        case (:-1) ! Read P(k) from input file.
+          if (.not.pkfile_read) then
+            call read_pkfile()
+          endif
 
-        ! Mass scaling not used in this case.
-        sclm = 1.0
-        ! Calc sigma8 for input spectrum
-        call spline_interp(m8,sigma,alpha)
-        
-      case (0) ! Power-law P(k)
+          ! Mass scaling not used in this case.
+          sclm = 1.0
+          ! Calc sigma8 for input spectrum
+          call spline_interp(m8,sigma,alpha)
+          
+        case (0) ! Power-law P(k)
           m8    = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
           sclm  = 1.0/m8
           ms    = m8*sclm         
           sigma = ms**(-(nspec+3.0)/6.0)
-       case default ! Analytic CDM or WDM P(k)
+        case default ! Analytic CDM or WDM P(k)
           ! Compute the required scaling factors sclm and scla.
           sclm = gamma**3/omega0
           m8   = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
@@ -94,14 +97,14 @@ contains
           call spline_interp(ms,sigma,alpha)
        end select transfer_function
 
-       scla=sigma8/sigma  ! scales sigma_8 to required value
+       scla = sigma8/sigma  ! scales sigma_8 to required value
             
        first_call = .false.  ! indicates first call complete and sclm and scla are set
        resetting  = .false.
     end if
 
     !     ----------------------------------------------------
-    ms=m*sclm
+    ms = m*sclm
     select case (itrans)
     case (0) ! Power-law P(k)
         ! APC: this was previously an abuse of the function parameter alpha, but
@@ -111,9 +114,8 @@ contains
     case default ! CDM or WDM or tabulated
        ! Use spline fit
        call spline_interp(ms,sigma,alpha)
-       sigmacdm=sigma*scla
+       sigmacdm = sigma*scla
     end select
-    !     
     return
   end function sigmacdm
 
@@ -163,40 +165,45 @@ contains
     
     ! On first call set initial values and read the spline fit
     if (first_call) then
+      kplo  = NSPL
+      kphi  = 1
+      m(1)  = 0.0 ! Set to here to avoid compiler warning but read below.
+      imod  = 0
+      nspec = 0.01*nint(100.0*nspec)
+      write (sform,'(sp,f6.3,ss)') dndlnk
 
-       kplo=NSPL
-       kphi=1
-       m(1)=0.0 ! Set to here to avoid compiler warning but read below.
-       imod=0
-       nspec=0.01*nint(100.0*nspec)
-       write (sform,'(sp,f6.3,ss)') dndlnk
-       select case (itrans)
-       case (:-1)  ! Tabulated P(k)
-          write(splinefile,'(a,a)') trim(pkinfile),'.spline'
-       case (3) ! Eisenstein & Hu
-          write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2,a1,f6.4)') &
-               & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_' &
-               &,trim(sform),'_',kref ,'.spline.',itrans,'_',omega0,'_',omegab
-       case (10) ! WDM
-          write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2)') &
-               & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform) &
-               &,'_',kref,'.spline.',itrans,'_',mwdm
-       case default ! CDM
-          write(splinefile,'(a25,f4.2,a1,a,a1,f4.2,a8,i1)') & 
-               &  TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
-               &,'.spline.',itrans
-       end select
-       io=0
-       open (10,file=splinefile,status='unknown')
-       read (10,*,iostat=io) NSPLINE
-       if (io.ne.0) then
+      ! APC: FIXME The a30 thing here is a bit silly but better than a25! :)
+      ! APC: FIXME split off the root path and prepend it afterwards.
+      select case (itrans)
+      case (:-1)  ! Tabulated P(k)
+        write(splinefile,'(a,a)') trim(pkinfile),'.spline'
+      case (3) ! Eisenstein & Hu
+        write(splinefile,'(a30,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2,a1,f6.4)') &
+          & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_' &
+          &,trim(sform),'_',kref ,'.spline.',itrans,'_',omega0,'_',omegab
+      case (10) ! WDM
+        write(splinefile,'(a30,f4.2,a1,a,a1,f4.2,a8,i1,a1,f4.2)') &
+          & TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform) &
+          &,'_',kref,'.spline.',itrans,'_',mwdm
+      case default ! CDM
+        write(splinefile,'(a30,f4.2,a1,a,a1,f4.2,a8,i1)') & 
+          &  TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
+          &,'.spline.',itrans
+      end select
+
+      splinefile = adjustl(splinefile)
+
+      io=0
+      open (10,file=trim(splinefile),status='unknown')
+      read (10,*,iostat=io) NSPLINE
+      if (io.ne.0) then
           close (10)
 #ifdef INFO
           write (0,*) 'spline_interp(): INFO - spline file not present creating it with make_spline()'
 #endif
           call make_spline
           io=0
-          open (10,file=splinefile,status='unknown') 
+          open (10,file=trim(splinefile),status='unknown') 
           read (10,*,iostat=io) NSPLINE
        end if
        if (NSPLINE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch of NSPL( != NSPLINE)'
@@ -309,7 +316,7 @@ contains
         inquire(file=trim(power_spec_lock_file) , exist=locked)
         if (.not. locked) then
             ! Create lock file
-            open(unit=10, file="data.lock", status="new", action="write", iostat=ierr)
+            open(unit=10, file=power_spec_lock_file, status="new", action="write", iostat=ierr)
             if (ierr == 0) exit  ! Lock acquired
         end if
         call sleep(1)  ! Wait 1 second
@@ -401,7 +408,7 @@ contains
     ! Write spline coefficients to a file that later is read by
     ! the subroutine in sigmacdm_spline.f
     
-    open (10,file=splinefile, status='unknown')
+    open (10,file=trim(splinefile), status='unknown')
     write (10,*) NSPL ! Nspline
 #ifdef INFO
     write (0,*) 'M s=sigma(M) d^2s/dm^2  a=dlns/dlnm  d^2a/dm^2'

@@ -32,7 +32,6 @@ module Power_Spectrum
   
   ! Characters
   character(len=1024) :: pkinfile
-  character(len=220)  :: splinefile
   character(len=1024) :: tffile
 
   interface transfer_function
@@ -93,15 +92,13 @@ contains
 
        trans = transfer_function(k,q,Gamma_eff)
        
-       first_call = .false.
-
        ! Multiply by primordial P(k) propto k^nspec to get final P(k)
        neff = nspec+0.5*dndlnk*log(k/kref)
        pk   = (trans**2)*(k/KHORIZON)**neff ! P(k)
     case (0)
        stop 'pkfacs(): FATAL - this function does not handle itrans=0, which is power-law P(k)'
     end select
-        
+
     ! Calc k-space window function for top hat in real space, 
     ! and its derivative.
     u = k*rf
@@ -112,8 +109,37 @@ contains
     ! Multiply by P(k)
     pw2k3  = (k**3)*(win**2)*pk
     pwdwk3 = (k**3)*win*dwin*pk
-    return
+    
+    first_call = .false.
   end subroutine pkfacs
+    
+  ! APC: This stores the analytic powerspectrum for output
+  ! APC: This tabulation has no other use in the code.
+  subroutine tabulate_pk_for_output
+    ! : if (first_call.and.(itrans.ge.0)) then
+    implicit none
+
+    real :: lnkmax, lnkmin, dlnk
+       lnkmax  =  5.0-log(rf)
+       lnkmin  = -9.0-log(rf)
+       dlnk    = (lnkmax-lnkmin)/float(NT-1)
+       
+       do ik=1, NT
+          lnk = lnkmin+dlnk*float(ik-1)
+          call pkfacs(exp(lnk),rf,Gamma_eff,pk,pw2k3,pwdwk3)
+          sum  = sum  + pw2k3
+          suma = suma + pwdwk3
+       end do
+
+       lnkmin = lnkmin - dlnk
+       call pkfacs(exp(lnkmin),rf,Gamma_eff,pk,pw2k3_kmin,pwdwk3_kmin)
+       
+       lnkmax = lnkmax + dlnk
+       call pkfacs(exp(lnkmax),rf,Gamma_eff,pk,pw2k3_kmax,pwdwk3_kmax)
+  ! FIXME TODO  
+  end subroutine tabulate_pk_for_output
+
+
 
   real function transfer_function_generic(k,q,Gamma_eff)
     implicit none
@@ -199,7 +225,6 @@ contains
     transfer_function_BBKS_CDM = (log(1.0+2.34*q)/(2.34*q**2))/((1.0/q)**4+3.89/q**3+(16.1/q)**2+5.46**3/q+6.71**4)**0.25
   end function transfer_function_BBKS_CDM
 
-
   subroutine cobe_sigma8
     !
     ! cobe_sigma8():
@@ -259,20 +284,20 @@ contains
     else
        stop 'cobe_sigma8(): FATAL - cannot cope with this cosmology'
     end if
-    !
+    
     ! Integrate k^2 P(k) W(k) and scale by delta_H.
-    lnkmax=5.0-log(rf)
-    lnkmin=-9.0-log(rf)
-    dlnk=(lnkmax-lnkmin)/float(N-1)
-    sum=0.0
+    lnkmax =  5.0-log(rf)
+    lnkmin = -9.0-log(rf)
+    dlnk   = (lnkmax-lnkmin)/float(N-1)
+    sum    = 0.0
     do i=1,N
-       lnk=lnkmin+dlnk*real(i-1)
+       lnk = lnkmin+dlnk*real(i-1)
        call pkfacs(exp(lnk),rf,Gamma,pk,pw2k3,pwdwk3)
-       sum=sum+pw2k3
+       sum = sum+pw2k3
     end do
-    lnkmin=lnkmin-dlnk
+    lnkmin = lnkmin-dlnk
     call pkfacs(exp(lnkmin),rf,Gamma,pk,pw2k3_kmin,pwdwk3)
-    lnkmax=lnkmax+dlnk 
+    lnkmax = lnkmax+dlnk 
     call pkfacs(exp(lnkmax),rf,Gamma,pk,pw2k3_kmax,pwdwk3)
     sigma8=(sum+0.5*pw2k3_kmin+0.5*pw2k3_kmax)*dlnk
     sigma8=delta_H*sqrt(sigma8)

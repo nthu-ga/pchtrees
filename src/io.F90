@@ -9,6 +9,7 @@ module IO
   use Runtime_Parameters
   use Parameter_File
   use Overdensity
+  use Sigmacdm_Spline
   implicit none
 
 #ifdef WITH_HDF5
