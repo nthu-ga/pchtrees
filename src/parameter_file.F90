@@ -245,8 +245,9 @@ contains
       & pa_output%nlev, default=PA_OUTPUT_NLEV_NOTREAD)
 
     ! We care about whether we actually read nlev or just used the
-    ! default value. This is a bit of a hack.
-    pa_output%have_nlev = pa_output%nlev.eq.PA_OUTPUT_NLEV_NOTREAD
+    ! default value. This is a bit of a hack. A few ugly double 
+    ! negatives here!
+    pa_output%have_nlev = (pa_output%nlev.ne.PA_OUTPUT_NLEV_NOTREAD)
     if (.not.pa_output%have_nlev) then
       pa_output%nlev = PA_OUTPUT_NLEV_DEF
     endif
@@ -320,6 +321,9 @@ contains
         call print_kv('output_format', 'jet')
       endif
       call print_kv('file_base', pa_output%file_base)
+      ! Since pa_output%nlev = -1 if we didn't read nlev from the
+      ! parameter file (must be the case here!), we need to 
+      ! substitute a sensible value in the defaults.
       call print_kv('nlev', pa_output%nlev)
       call print_kv('mres', pa_output%mres)
       if (pa_output%have_aexp_list) then
