@@ -490,7 +490,8 @@ contains
         have_param_flag = .false.
       endif
     case default
-      write(*,*) 'Bad news!'
+      write(*,*) 'FATAL: Failed to read optional string parameter: ', trim(param_name)
+      write(*,*) '       Error code: ', error_code
       stop
     end select
   end subroutine read_optional_string_parameter
