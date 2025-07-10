@@ -13,16 +13,17 @@ module Power_Spectrum
   integer :: itrans
   integer :: igwave,nktab,Trans_Func_Table_N_Points
   
-  ! Array dimensions
-  integer, parameter :: NKTABMAX=1000
-
-  ! Floats
-  real :: gamma
+  ! APC: Maximum size of tabulated P(K)
+  ! APC: Also actual size of output P(K) for itrans > 0
+  integer, parameter :: NKTABMAX = 1000
 
   ! APC: These tables were used only for the tabulated P(k) case by
   ! APC: PCH. We use them also for the *output* of the analytic P(k).
   real :: lnktab(NKTABMAX),lnpktab(NKTABMAX)
 
+
+  ! Floats
+  real :: gamma
   real :: dndlnk,kref,mwdm,nspec,sigma8,scla,sclm
   real :: Transfer_Function_Table_lnk(Transfer_Function_Table_N_Max)
   real :: Transfer_Function_Table_lnTk(Transfer_Function_Table_N_Max)
@@ -113,33 +114,28 @@ contains
     first_call = .false.
   end subroutine pkfacs
     
-  ! APC: This stores the analytic powerspectrum for output
+  ! APC: This stores the analytic powerspectrum for output.
   ! APC: This tabulation has no other use in the code.
-  subroutine tabulate_pk_for_output
-    ! : if (first_call.and.(itrans.ge.0)) then
+  subroutine tabulate_pk_for_output(rf)
     implicit none
-
+    
     real :: lnkmax, lnkmin, dlnk
-       lnkmax  =  5.0-log(rf)
-       lnkmin  = -9.0-log(rf)
-       dlnk    = (lnkmax-lnkmin)/float(NT-1)
-       
-       do ik=1, NT
-          lnk = lnkmin+dlnk*float(ik-1)
-          call pkfacs(exp(lnk),rf,Gamma_eff,pk,pw2k3,pwdwk3)
-          sum  = sum  + pw2k3
-          suma = suma + pwdwk3
-       end do
+    real :: lnk
+    real :: pk, pw2k3, pwdwk3
 
-       lnkmin = lnkmin - dlnk
-       call pkfacs(exp(lnkmin),rf,Gamma_eff,pk,pw2k3_kmin,pwdwk3_kmin)
-       
-       lnkmax = lnkmax + dlnk
-       call pkfacs(exp(lnkmax),rf,Gamma_eff,pk,pw2k3_kmax,pwdwk3_kmax)
-  ! FIXME TODO  
+    lnkmax  =  5.0-log(rf)
+    lnkmin  = -9.0-log(rf)
+    dlnk    = (lnkmax-lnkmin)/float(NT-1)
+
+    ! From lnkmin - dlnk to lnkmin + dlnk
+    do ik=1, NT
+      lnk = lnkmin+dlnk*float(ik-1)
+      call pkfacs(exp(lnk),rf,Gamma_eff,pk,pw2k3,pwdwk3)
+
+      lnktab(ik)  = lnk
+      lnpktab(ik) = log(pk) 
+    end do
   end subroutine tabulate_pk_for_output
-
-
 
   real function transfer_function_generic(k,q,Gamma_eff)
     implicit none
