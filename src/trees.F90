@@ -202,7 +202,7 @@ program tree
      write(*,*) '         line or in the parameter file. The expansion factor'
      write(*,*) '         list / redshift list in the parameter file has priority.'
      write(*,*)
-     write(*,*) 'DEBUG': , found_nlev, pa_output%have_nlev, found_ahalo, found_zmax
+     write(*,*) 'DEBUG:' , found_nlev, pa_output%have_nlev, found_ahalo, found_zmax
   else
     write(*,'(1x,a,f10.3)') 'Expansion factor at root of tree : ', ahalo
     write(*,'(1x,a,f10.3)') 'Maximum redshift for tree nodes  : ', zmax

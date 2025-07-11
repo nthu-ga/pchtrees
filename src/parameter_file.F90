@@ -491,7 +491,7 @@ contains
       endif
     case default
       write(*,*) 'FATAL: Failed to read optional string parameter: ', trim(param_name)
-      write(*,*) '       Error code: ', error_code
+      write(*,*) '       Error code: ', temp_keyval%error_code
       stop
     end select
   end subroutine read_optional_string_parameter
