@@ -4,6 +4,7 @@ Data/Power_Spec/*
 hardcopy.*
 *.hdf5
 
+build/
 examples/progenitors
 data/*/*spline.1
 *.jet.txt
