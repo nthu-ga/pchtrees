@@ -8,6 +8,9 @@ examples/progenitors
 data/*/*spline.1
 *.jet.txt
 
+.ipynb_checkpoints
+*.hdf5
+
 # GNU Profiling
 *.gcov
 *.gprof
