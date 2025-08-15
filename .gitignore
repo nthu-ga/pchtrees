@@ -8,6 +8,7 @@ examples/progenitors
 data/*/*spline.1
 *.jet.txt
 
+*.ipynb
 .ipynb_checkpoints
 *.hdf5
 
