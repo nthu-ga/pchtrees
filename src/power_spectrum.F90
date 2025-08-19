@@ -8,7 +8,7 @@ module Power_Spectrum
   
   ! Array dimensions
   integer, parameter :: Transfer_Function_Table_N_Max = 1800
-  
+ 
   ! Integers
   integer :: itrans
   integer :: igwave,nktab,Trans_Func_Table_N_Points
@@ -21,13 +21,20 @@ module Power_Spectrum
   ! APC: PCH. We use them also for the *output* of the analytic P(k).
   real :: lnktab(NKTABMAX),lnpktab(NKTABMAX)
 
-
   ! Floats
   real :: gamma
-  real :: dndlnk,kref,mwdm,nspec,sigma8,scla,sclm
+  real :: dndlnk,kref,mwdm,nspec,sigma8
+  real :: scla,sclm
   real :: Transfer_Function_Table_lnk(Transfer_Function_Table_N_Max)
   real :: Transfer_Function_Table_lnTk(Transfer_Function_Table_N_Max)
   
+  ! APC: Used in creating the spline files
+  ! APC: this used to be a bit hidden; hardcoded in sigmacdm_spline
+  real, parameter :: POWER_SPEC_GAMMA_EFF = 1.0
+  
+  real, parameter :: PK_OUTPUT_MAX_K = 1e6
+  real, parameter :: PK_OUTPUT_MIN_K = 1e-6 
+
   ! Logicals
   logical :: WDMrun
   
@@ -39,31 +46,99 @@ module Power_Spectrum
     module procedure transfer_function_generic
   end interface transfer_function
 
-  logical :: pkfile_read = .false.
+  logical :: pkfile_read  = .false.
+  logical :: pk_tabulated = .false.
+
 contains
-     
+
+  subroutine init_power_spec_tables()
+    implicit none
+
+    real :: rf
+
+    ! APC: relies on global itrans
+
+    ! APC: FIXME add condition on writing P(k), otherwise there's
+    ! no need to read/tabulate the P(k) if the spline file already
+    ! exists.
+
+    select case (itrans)
+    case (:-1) ! Tabulated P(k).
+      call read_pkfile()
+    case (1:)
+      ! If we don't have tabulated powerspectrum already,
+      ! make one now so we can write it out later.
+      call tabulate_pk_for_output(POWER_SPEC_GAMMA_EFF)
+    case default
+      write(*,*) 'FATAL: init_power_spec_tables(): unsupported itrans=',itrans
+    end select
+
+  end subroutine
+
+  ! APC: Returns the radius of a top hat filter corresponding to mass m.
+  !
+  real function top_hat_radius(m)
+    implicit none
+
+    real :: m
+
+    ! APC: relies on global itrans and other globals.
+
+    select case (itrans)
+    case (:-1) ! Tabulated P(k).
+      ! Make tabulation with true Omega0.
+      top_hat_radius = (3.0*m/(4.0*PI*RHOCRIT*omega0))**(1.0/3.0)
+    case (1:) ! Analytic CDM or WDM
+      ! Make tabulation for Omega0=Gamma=1.
+      top_hat_radius = (3.0*m/(4.0*PI*RHOCRIT))**(1.0/3.0)
+    case default
+      stop 'make_spline(): FATAL - this subroutine does not handle itrans=0, which is power-law P(k)'
+    end select
+  end function
+
+  ! APC: Reduced version of pkfacs that only calculates pk, with no guard on
+  ! intrans. This shouldn't be called if itrans < 0.
+  !
+  real function pk_only(k,Gamma_eff)
+    implicit none
+
+    real, intent(in)  :: k,Gamma_eff
+
+    real :: q, trans, neff
+
+    ! Calculate transfer function T(k).
+    q = k/Gamma_eff
+
+    trans = transfer_function(k,q,Gamma_eff)
+
+    ! Multiply by primordial P(k) propto k^nspec to get final P(k)
+    neff = nspec+0.5*dndlnk*log(k/kref)
+    pk_only = (trans**2)*(k/KHORIZON)**neff ! P(k)
+    return
+  end function pk_only
+
   ! This routine calculates:
-  !      
+  !
   ! pk     = P(k), and also
   ! pw2k3  = k^3 W(u)^2 P(k)
   ! pwdwk3 = k^3 W(u) u.dW/du
   ! where u = kr
-  !     
-  ! for the case of an analytic CDM or WDM P(k) (itrans>0) or for a 
+  !
+  ! for the case of an analytic CDM or WDM P(k) (itrans>0) or for a
   ! tabulated P(k) (itrans<0)
-  !     
+  !
   ! itrans>0: P(k) propto k^nspec T(k)^2, analytic T(k)
   ! itrans<0: P(k) interpolated directly from table
-  !     
+  !
   subroutine pkfacs(k,rf,Gamma_eff,pk,pw2k3,pwdwk3)
     implicit none
-    
+
     ! Floats
     real, intent(in)  :: k,rf,Gamma_eff
     real, intent(out) :: pk,pw2k3,pwdwk3
     real :: dwin,lnk,lnpk,neff,q,trans,u,win
     logical, save :: first_call = .true.
-         
+
     ! Calculate P(k)
     select case (itrans)
     case (:-1) ! Tabulated P(k).
@@ -88,19 +163,13 @@ contains
           pk = exp(lnpk)
        endif
     case (1:) ! Analytic transfer function for CDM or WDM.
-       ! Calculate transfer function T(k).
-       q = k/Gamma_eff
-
-       trans = transfer_function(k,q,Gamma_eff)
-       
-       ! Multiply by primordial P(k) propto k^nspec to get final P(k)
-       neff = nspec+0.5*dndlnk*log(k/kref)
-       pk   = (trans**2)*(k/KHORIZON)**neff ! P(k)
+        ! P(k)
+        pk = pk_only(k,Gamma_eff)
     case (0)
        stop 'pkfacs(): FATAL - this function does not handle itrans=0, which is power-law P(k)'
     end select
 
-    ! Calc k-space window function for top hat in real space, 
+    ! Calc k-space window function for top hat in real space,
     ! and its derivative.
     u = k*rf
     ! W(u)
@@ -110,31 +179,39 @@ contains
     ! Multiply by P(k)
     pw2k3  = (k**3)*(win**2)*pk
     pwdwk3 = (k**3)*win*dwin*pk
-    
+
     first_call = .false.
   end subroutine pkfacs
-    
+
   ! APC: This stores the analytic powerspectrum for output.
   ! APC: This tabulation has no other use in the code.
-  subroutine tabulate_pk_for_output(rf)
+  subroutine tabulate_pk_for_output(Gamma_eff)
     implicit none
-    
-    real :: lnkmax, lnkmin, dlnk
-    real :: lnk
-    real :: pk, pw2k3, pwdwk3
 
-    lnkmax  =  5.0-log(rf)
-    lnkmin  = -9.0-log(rf)
-    dlnk    = (lnkmax-lnkmin)/float(NT-1)
+    real, intent(IN) :: Gamma_eff
+
+    real :: lnkmax, lnkmin, dlnk
+    real :: lnk, pk
+
+    integer :: ik
+
+    ! APC: not clear what range we should tabulate
+    lnkmax  = log(PK_OUTPUT_MAX_K)
+    lnkmin  = log(PK_OUTPUT_MIN_K)
+    dlnk    = (lnkmax-lnkmin)/float(NKTABMAX-1)
 
     ! From lnkmin - dlnk to lnkmin + dlnk
-    do ik=1, NT
+    do ik=1, NKTABMAX
+
       lnk = lnkmin+dlnk*float(ik-1)
-      call pkfacs(exp(lnk),rf,Gamma_eff,pk,pw2k3,pwdwk3)
+      pk  = pk_only(exp(lnk),Gamma_eff)
 
       lnktab(ik)  = lnk
-      lnpktab(ik) = log(pk) 
+      lnpktab(ik) = log(pk)
     end do
+
+    ! Set module flag
+    pk_tabulated = .true.
   end subroutine tabulate_pk_for_output
 
   real function transfer_function_generic(k,q,Gamma_eff)
@@ -142,7 +219,7 @@ contains
     !
     ! APC: Selects a transfer function according to the global variable
     ! APC: itrans. FIXME: no reason itrans can't be passed as a parameter.
-    
+
     ! Floats
     real, intent(in) :: k, q, Gamma_eff
 
@@ -159,7 +236,7 @@ contains
        transfer_function_generic = transfer_function_BBKS_CDM(q)
     case (2)
        ! Bond & Efstathiou transfer function
-       transfer_function_generic = transfer_function_BE(q) 
+       transfer_function_generic = transfer_function_BE(q)
     case (3)
        ! Eisenstein & Hu (1999, ApJ, 511, 5)
        Theta27=CMB_T0/2.7 ! CMB temperature [in units of 2.7K]
@@ -250,14 +327,14 @@ contains
     ! due to the choice of units for wavenumber k and the Fourier
     ! transform convention.
     if (abs(lambda0+omega0-1.0).le.EPS) then ! Flat models
-       delta_H=COBE_4YR*omega0**(-0.785-0.05*log(omega0)) 
+       delta_H=COBE_4YR*omega0**(-0.785-0.05*log(omega0))
        if (abs(nspec-1.0).ge.EPS) then
           ! The following formulae are Liddle et al., 1996, MNRAS, 282, 281
           ! equations (11) and (12).
-          if (igwave.eq.0) then 
-             delta_H=delta_H*exp(-0.95*(nspec-1.0)-0.169*(nspec-1)**2)  
+          if (igwave.eq.0) then
+             delta_H=delta_H*exp(-0.95*(nspec-1.0)-0.169*(nspec-1)**2)
           else if (igwave.eq.1) then
-             delta_H=delta_H*exp(1.0*(nspec-1.0)+1.97*(nspec-1)**2)  
+             delta_H=delta_H*exp(1.0*(nspec-1.0)+1.97*(nspec-1)**2)
 #ifdef DEBUG
              write (0,*) 'cobe_sigma8(): DEBUG - assuming gravitational waves for power-law inflation'
 #endif
@@ -276,11 +353,11 @@ contains
 #endif
           nspec=1.0
        end if
-       delta_H=COBE_4YR*omega0**(-0.35-0.19*log(omega0)) 
+       delta_H=COBE_4YR*omega0**(-0.35-0.19*log(omega0))
     else
        stop 'cobe_sigma8(): FATAL - cannot cope with this cosmology'
     end if
-    
+
     ! Integrate k^2 P(k) W(k) and scale by delta_H.
     lnkmax =  5.0-log(rf)
     lnkmin = -9.0-log(rf)

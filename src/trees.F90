@@ -32,7 +32,6 @@ program tree
   real    :: mphalo,ahalo,zmin,zmax
   integer :: ierr,nhalomax,nhalo
   integer :: iter, iseed
-  !EXTERNAL sigmacdm,split
 
   integer, allocatable :: nhalolev(:)
   integer, allocatable :: jphalo(:)
@@ -269,6 +268,10 @@ program tree
   if (itrans < 0) then
     write (0,*) 'Using tabulated P(k) in ', trim(pkinfile)
   endif
+
+  ! Read the power spectrum from a file, or tabulate it from a function,
+  ! according to itrans. 
+  call init_power_spec_tables()
 
   ! Set initial random seed
   iseed0 = pa_runtime%iseed
@@ -619,6 +622,9 @@ program tree
       call write_header(file_path, '/Header', nlev-1, & 
         & nhalos_per_file(ifile), sum(trees_nhalos), &
         & ntrees_per_file(ifile), ntrees, nfiles)
+    
+      ! Write the tabulated power spectrum
+      call write_power_specturm(file_path)
     end do
 #endif
   endif 

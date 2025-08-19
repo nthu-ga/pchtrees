@@ -386,19 +386,38 @@ contains
   end subroutine write_tree_table
   
   ! ############################################################ 
-  !subroutine write_power_specturm(filename)
-  !  implicit none
+  subroutine write_power_specturm(filename)
+    implicit none
 
-  !  character(len=*), intent(in)  :: filename      ! HDF5 file name
-  !  character(len=*) :: dataset_name  
-  !    
-  !  integer(hid_t) :: file_id, group_id
-  !  integer :: hdferr
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
 
-  !  call write_1d_array_real(filename, '/Powerspec/k',  global_k)
-  !  call write_1d_array_real(filename, '/Powerspec/Pk', global_Pk)
-  !
-  !end subroutine write_power_specturm
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    real :: sclk, sclpk
+
+    if (.not.sigmacdm_spline_setup_complete) then
+      stop
+    endif
+
+    ! gamma is a module variable from power_spectrum.F90
+
+    ! Wavenumbers scale as gamma
+    sclk  = gamma
+    ! Powerspectrum scales as (a^2) * (gamma^3), where
+    ! a : factor that scales sigma
+    sclpk = (scla**2)*(gammma**3)
+
+    call write_1d_array_real(filename, '/Powerspec/k',  exp(lnktab*sclk))
+    call write_1d_array_real(filename, '/Powerspec/Pk', exp(lnpktab*sclpk))
+    call write_1d_array_real(filename, '/Powerspec/k_rescale',  sclk)
+    call write_1d_array_real(filename, '/Powerspec/pk_rescale', sclpk)
+
+    ! These are module variables from power_spectrum.F90
+    call write_1d_array_real(filename, '/Powerspec/sigma_rescale', scla)
+    call write_1d_array_real(filename, '/Powerspec/mass_rescale',  sclm)
+
+  end subroutine write_power_specturm
 
   ! ############################################################ 
   subroutine write_parameters(filename)

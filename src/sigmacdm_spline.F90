@@ -39,7 +39,12 @@ module Sigmacdm_Spline
   ! Path to tabulated spline fit
   character(len=220)  :: splinefile
   
+  ! Flag to signal initializtion of spline
+  sigmacdm_spline_setup_complete = .false.
+
   public :: sigmacdm, splinefile
+
+  public :: sigmacdm_spline_setup_complete
 
 contains
 
@@ -98,9 +103,16 @@ contains
        end select transfer_function
 
        scla = sigma8/sigma  ! scales sigma_8 to required value
-            
+           
+       write(*,*) 'DEBUG    m8 = ', m8
+       write(*,*) 'DEBUG  sclm = ', sclm
+       write(*,*) 'DEBUG  scla = ', scla
+       write(*,*) 'DEBUG sigma = ', sigma
+
        first_call = .false.  ! indicates first call complete and sclm and scla are set
        resetting  = .false.
+      
+       sigmacdm_spline_setup_complete = .true.
     end if
 
     !     ----------------------------------------------------
@@ -199,9 +211,9 @@ contains
       if (io.ne.0) then
           close (10)
 #ifdef INFO
-          write (0,*) 'spline_interp(): INFO - spline file not present creating it with make_spline()'
+          write (0,*) 'spline_interp(): INFO - spline file not present, creating it with make_spline()'
 #endif
-          call make_spline
+          call make_spline()
           io=0
           open (10,file=trim(splinefile),status='unknown') 
           read (10,*,iostat=io) NSPLINE
@@ -295,7 +307,7 @@ contains
     
     integer :: i,ik
     real    :: x(NSPL),y(NSPL),y2(NSPL),yp1,ypn,logm,a(NSPL),a2(NSPL)
-    real    :: m,sigma,lnk,lnkmin,lnkmax,dlnk,sum,pw2k3,rf,Gamma_eff,pwdwk3,alph,suma
+    real    :: m,sigma,lnk,lnkmin,lnkmax,dlnk,sum,pw2k3,rf,pwdwk3,alph,suma
     real    :: pk,pw2k3_kmin,pwdwk3_kmin,pw2k3_kmax,pwdwk3_kmax
     
     ! character :: command*1024
@@ -336,8 +348,6 @@ contains
     write (0,*) '                where SCLM= Gamma**3/Omega_0'
 #endif
     
-    Gamma_eff = 1.0
-    
     ! We need to tabulate to sufficiently low masses to avoid galform
     ! crashing. AJB's method for estimating the minimum mass to tabulate
     ! is as follows:
@@ -360,17 +370,10 @@ contains
 
        ! Integrate 4 pi k^3 P(k) W^2(k) and 4 pi k^4 P(k) W(k) dW/du(kr)  
        ! calc top hat filter radius corresponding to mass M.
-       select case (itrans)
-       case (:-1) ! Tabulated P(k).
-          ! Make tabulation with true Omega0.
-          rf = (3.0*m/(4.0*PI*RHOCRIT*omega0))**(1.0/3.0)
-       case (1:) ! Analytic CDM or WDM
-          ! Make tabulation for Omega0=Gamma=1.
-          rf = (3.0*m/(4.0*PI*RHOCRIT))**(1.0/3.0)
-       case default
-          stop 'make_spline(): FATAL - this subroutine does not handle itrans=0, which is power-law P(k)'
-       end select
+       rf = top_hat_radius(m)
 
+       ! APC: Logic of range to tabulate here seems to be choosing ln(k) such
+       ! that ln(kr) = -9 to ln(kr) = 5 for a given r.
        lnkmax  =  5.0-log(rf)
        lnkmin  = -9.0-log(rf)
        dlnk    = (lnkmax-lnkmin)/float(NT-1)
@@ -380,16 +383,16 @@ contains
        
        do ik=1, NT
           lnk = lnkmin+dlnk*float(ik-1)
-          call pkfacs(exp(lnk),rf,Gamma_eff,pk,pw2k3,pwdwk3)
+          call pkfacs(exp(lnk),rf,POWER_SPEC_GAMMA_EFF,pk,pw2k3,pwdwk3)
           sum  = sum  + pw2k3
           suma = suma + pwdwk3
        end do
 
        lnkmin = lnkmin - dlnk
-       call pkfacs(exp(lnkmin),rf,Gamma_eff,pk,pw2k3_kmin,pwdwk3_kmin)
+       call pkfacs(exp(lnkmin),rf,POWER_SPEC_GAMMA_EFF,pk,pw2k3_kmin,pwdwk3_kmin)
        
        lnkmax = lnkmax + dlnk
-       call pkfacs(exp(lnkmax),rf,Gamma_eff,pk,pw2k3_kmax,pwdwk3_kmax)
+       call pkfacs(exp(lnkmax),rf,POWER_SPEC_GAMMA_EFF,pk,pw2k3_kmax,pwdwk3_kmax)
        
        sigma = (sum  + 0.5*pw2k3_kmin  + 0.5*pw2k3_kmax )*dlnk
        alph  = (suma + 0.5*pwdwk3_kmin + 0.5*pwdwk3_kmax)*dlnk
