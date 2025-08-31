@@ -295,8 +295,14 @@ program tree
     call count_lines_in_file(pa_output%zred_list, nlev)
   end if
 
-  if (nlev.le.0) then
-    write(*,*)
+  ! Allocate timestep arrays
+  write(*,*)
+  if (nlev.ge.1) then
+    write(*,*) "Number of output tree levels:", nlev
+    allocate(wlev(nlev))
+    allocate(alev(nlev))
+    allocate(ifraglev(nlev))
+  else
     write(*,*) 'FATAL: no lines were read from your redshift or expansion factor list!'
     if (pa_output%have_zred_list) then
       write(*,*) '       Check: ', pa_output%zred_list
@@ -306,18 +312,6 @@ program tree
     stop
   endif
 
-
-  ! Allocate timestep arrays
-  if (nlev > 1) then
-    allocate(wlev(nlev))
-    allocate(alev(nlev))
-    allocate(ifraglev(nlev))
-  else
-    write(*,*) 'Invalid nlev = ', nlev
-    write(*,*) 'Check the expansion factor list!'
-    stop
-  endif 
-
   if (pa_output%have_aexp_list) then
     ! Second pass: read expansion factors
     open(newunit=unit_num, file=pa_output%aexp_list, status="old", action="read", iostat=ierr)
@@ -326,13 +320,39 @@ program tree
     end do
     close(unit_num)
 
+#ifdef DEBUG
+    write(*,*)
+    write(*,*) 'Expansion factor list (unsorted)'
+    do ilev=1,nlev
+      write(*,*) alev(ilev)
+    end do
+#endif
+
+    ! Sanity check
+    if (maxval(alev).gt.1) then
+      write(*,*)
+      write(*,*) 'FATAL: maximum alev in alev_list is > 1; max value is:', maxval(alev)
+      write(*,*) '       Do you perhaps have a list of redshifts instead of expansion factors?'
+      write(*,*) '       If so, use zred_list rather than aexp_list!'
+      stop
+    endif
+
     ! Ensure descending order
     call insertion_sort_desc(alev,nlev)
+
+#ifdef DEBUG
+    write(*,*)
+    write(*,*) 'Expansion factor list (sorted)'
+    do ilev=1,nlev
+      write(*,*) alev(ilev)
+    end do
+#endif
+
   elseif (pa_output%have_zred_list) then
     ! Second pass: read readshifts, using expansion factor list for temp storage
     open(newunit=unit_num, file=pa_output%zred_list, status="old", action="read", iostat=ierr)
     do ilev=1,nlev
-        read(unit_num, *) alev(ilev)
+      read(unit_num, *) alev(ilev)
     end do
     close(unit_num)
 
@@ -739,23 +759,30 @@ contains
 
   end subroutine process_first_order_progenitors
 
+  ! A ChatGPT descending order insertion sort...
   subroutine insertion_sort_desc(arr, n)
-      ! A ChatGPT descending order insertion sort...
-      implicit none
-      integer, intent(in) :: n
-      real, intent(inout) :: arr(n)
-      integer :: i, j
-      real :: key
+    implicit none
+    integer, intent(in) :: n
+    real, intent(inout) :: arr(n)
+    integer :: i, j
+    real :: key
 
-      do i = 2, n
-          key = arr(i)
-          j = i - 1
-          do while (j > 0 .and. arr(j) < key)  ! Reverse comparison
-              arr(j + 1) = arr(j)
-              j = j - 1
-          end do
-          arr(j + 1) = key
-      end do
+    do i = 2, n
+       key = arr(i)
+       j = i - 1
+
+       ! Shift elements greater index up while arr(j) < key
+       do while (j >= 1)
+          if (arr(j) < key) then
+             arr(j+1) = arr(j)
+             j = j - 1
+          else
+             exit
+          end if
+       end do
+
+       arr(j+1) = key
+    end do
   end subroutine insertion_sort_desc
 
   subroutine count_lines_in_file(path, nlines)

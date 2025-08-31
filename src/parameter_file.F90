@@ -490,7 +490,8 @@ contains
         have_param_flag = .false.
       endif
     case default
-      write(*,*) 'FATAL: Failed to read optional string parameter: ', trim(param_name)
+      write(*,*) 'FATAL: Failed reading parameter file'
+      write(*,*) '       When reading optional string parameter: ', trim(param_name)
       write(*,*) '       Error code: ', temp_keyval%error_code
       stop
     end select
