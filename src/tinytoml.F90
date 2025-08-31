@@ -723,6 +723,12 @@ module TinyTOML
                     endif
                 endif
 
+                ! APC
+                if (.not.allocated(typ)) then
+                  write(*,*) 'APC FATAL: typ not allocated'
+                  stop
+                endif
+
                 if (typ /= "unknown") error_code = SUCCESS
 
                 if (error_code == SUCCESS) then
@@ -737,6 +743,7 @@ module TinyTOML
             if (ERROR_CODE /= success) then
                 call parse_error(ERROR_CODE, i)
             endif
+
         end do
 
         close(unit)
@@ -751,14 +758,14 @@ module TinyTOML
         type(toml_object):: node
         integer(i32):: num_tokens, i, n_children, ind
         num_tokens = size(tokens, 1)
-        ! write(*,*) 'Allocating ', num_tokens, ' token nodes' 
+        ! write(*,*) 'Allocating ', num_tokens, ' token nodes'
         allocate(nodes(num_tokens))
 
         ind = 0
         i = 1
-        
+
         do while (i <= num_tokens)
-            ! write(*,*) 'TOKEN:', tokens(i)%type,' ', tokens(i)%key, ' ', tokens(i)%value
+            ! write(*,*) 'TOKEN:', tokens(i)%type,' ', tokens(i)%key, ' ', tokens(i)%value, ' ', tokens(i)%error_code
             select case(tokens(i)%type)
             case("blank")
                 i = i + 1
@@ -834,6 +841,8 @@ module TinyTOML
                 nodes(ind)%key = tokens(i)%key
                 nodes(ind)%value = tokens(i)%value
                 nodes(ind)%type = tokens(i)%type
+                ! APC remember to copy error code here!
+                nodes(ind)%error_code = tokens(i)%error_code
                 nodes(ind)%children =  no_children()
                 i = i + 1
             end select
@@ -937,6 +946,7 @@ module TinyTOML
         pair%key = key
         pair%value = parse_result%value
         pair%line_num = line_number
+
     end function
 
     pure function clean_number(str) result(num)
@@ -971,12 +981,12 @@ module TinyTOML
         error_code = SUCCESS
 
         !check if value starts with integer part
-        !extra if statement needed to handle single length integers 
+        !extra if statement needed to handle single length integers
         isnumber = .false.
         if ((len(val) >= 2) .and. (val(1:1) == "+" .or. val(1:1) == "-")) then !check for signs
             isnumber = isdigit(val(2:2))
-        else  
-            isnumber = isdigit(val(1:1)) 
+        else
+            isnumber = isdigit(val(1:1))
         endif
 
         ! Check if value is a bool
