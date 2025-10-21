@@ -420,6 +420,24 @@ contains
   end subroutine write_power_specturm
 
   ! ############################################################ 
+  subroutine write_sigma_table(filename)
+    implicit none
+
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
+
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    if (.not.sigmacdm_spline_setup_complete) then
+      stop
+    endif
+
+    call write_1d_array_real(filename, '/Sigma/k',  exp(lnktab*sclk))
+    call write_1d_array_real(filename, '/Sigma/sigma_spline', sigmacdm)
+
+  end subroutine write_sigma_table
+
+  ! ############################################################ 
   subroutine write_parameters(filename)
     implicit none
 
