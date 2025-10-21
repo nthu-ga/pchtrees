@@ -16,7 +16,8 @@ FC = gfortran
 COMPILER   := $(strip $(COMPILER))
 
 # Comment following line to disable HDF5
-HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
+#HDF5_DIR := /cluster/software/hdf5/1.10.5/gcc--9.4.0/serial
+HDF5_DIR := /opt/homebrew/
 
 # Report build type
 $(info BUILD_TYPE = '$(BUILD_TYPE)')
@@ -38,7 +39,6 @@ ifeq ($(strip $(BUILD_TYPE)), DEVELOP_FIXES)
     FPP_FLAGS := -DSTRICT_REAL_EQ
     FC_FLAGS := -O0 -g -fbacktrace -Wno-maybe-uninitialized -Wall -Wextra -Wpedantic -fimplicit-none  -fbounds-check
 endif
-
 
 ifeq ($(strip $(BUILD_TYPE)), OPT)
     FC_FLAGS := -O3 -fimplicit-none
