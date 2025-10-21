@@ -101,7 +101,7 @@ debug:
 	@echo
 	@echo "OBJS = $(OBJECTS)"
 
-HAVE_GIT := $(shell git -v 2> /dev/null)
+HAVE_GIT := $(shell git --version 2> /dev/null)
 ifdef HAVE_GIT
 define GIT_VER
 module git_version
