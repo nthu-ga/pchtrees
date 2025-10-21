@@ -12,6 +12,7 @@ program tree
   use Parameter_File
   use IO
   use Commandline
+  use git_version
 #ifdef WITH_HDF5
   use HDF5
 #endif
@@ -86,7 +87,10 @@ program tree
 
   ! Validation
   logical :: data_path_exists
-  
+
+  write(*,*)
+  write(*,*) 'PCHTrees version: ', trim(version)
+
   ! Parse the command line
   call read_command_line_args()
 
