@@ -284,27 +284,7 @@ contains
       & pa_output%have_aexp_list,                &
       & pa_output%aexp_list)
 
-    !temp_keyval = section%get('aexp_list', error=.false.)
-    !pa_output%have_aexp_list = .false.
-    !select case(temp_keyval%error_code)
-    !case (KEY_NOT_FOUND)
-    !  ! No axep list, ok
-    !  ! Not really needed, but no "pass" in Fortran...
-    !  pa_output%have_aexp_list = .false.
-    !case (SUCCESS)
-    !  call read_value(temp_keyval, pa_output%aexp_list)
-    !  ! Only sanity check is that an empty value is
-    !  ! counted as no value
-    !  if (len(trim(pa_output%aexp_list)).gt.0) then
-    !    pa_output%have_aexp_list = .true.
-    !  else
-    !    pa_output%have_aexp_list = .false.
-    !  endif
-    !case default
-    !  write(*,*) 'Bad news!'
-    !  stop
-    !end select
-
+    ! Optional zred list
     call read_optional_string_parameter(section, &
       & 'zred_list',                             &
       & pa_output%have_zred_list,                &
@@ -458,7 +438,7 @@ contains
       write(output_unit, *) 'Unsupported type'
     end select
   end subroutine print_kv
-  
+
   ! ############################################################
   subroutine read_optional_string_parameter(section, param_name, &
       & have_param_flag, param_store)
@@ -472,9 +452,13 @@ contains
     character(len=:), allocatable, intent(INOUT) :: param_store
 
     type(toml_object) :: temp_keyval
-    
+
+    ! error = .false. required here because the parameter is
+    ! *optional*; we want to return and continue reading other
+    ! parameters if we don't find it.
     temp_keyval = section%get(param_name, error=.false.)
     have_param_flag = .false.
+
     select case(temp_keyval%error_code)
     case (KEY_NOT_FOUND)
       ! No parameter, ok
