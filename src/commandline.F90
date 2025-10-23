@@ -264,21 +264,22 @@ contains
   subroutine usage()
     implicit none
 
-    write(*,*) 
+    write(*,*)
     write(*,*) 'Usage: ./pchtrees parameter_file_path ntrees mphalo ahalo zmax [options]'
-    write(*,*) 
-    write(*,*) 'Options (positional or by keyword):' 
+    write(*,*)
+    write(*,*) 'Options (positional or by keyword):'
     write(*,*) 'path   (--path  ) : path to parameter file in TOML format'
     write(*,*) 'ntrees (--ntrees) : integer number of trees to generate (1)'
     write(*,*) 'mphalo (--mphalo) : target mass of tree root notes (1e12 Msol)'
     write(*,*) 'ahalo  (--ahalo)  : Expansion factor at root of tree (1.0)'
-    write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)' 
-    write(*,*) 
+    write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)'
+    write(*,*)
     write(*,*) 'Options (keyword only):'
     write(*,*) '--nlev : number of levels in tree'
     write(*,*) '--mmax : upper limit of mass sampling range'
     write(*,*) '--loguniform : random uniform sampling in log10 mass'
-    write(*,*) 
+    write(*,*) '--version : print code version, then stop'
+    write(*,*)
 
   end subroutine usage
 
