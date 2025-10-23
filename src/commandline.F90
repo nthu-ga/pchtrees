@@ -1,6 +1,7 @@
 module Commandline
+  use git_version
   implicit none
-    
+
   character(len=64) :: arg_pf_path
   character(len=64) :: arg_ntrees
   character(len=64) :: arg_mphalo
@@ -17,6 +18,7 @@ module Commandline
   logical :: found_nlev    = .false.
   logical :: found_switch_defaults = .false.
   logical :: found_switch_verbose  = .false.
+  logical :: found_switch_version  = .false.
   logical :: found_task_no_output_trees  = .false.
   logical :: found_task_process_first_order_progenitors = .false.
 
@@ -30,7 +32,7 @@ module Commandline
   logical :: is_kw_zmax    = .false.
   logical :: is_kw_nlev    = .false.
 
-contains 
+contains
 
   subroutine read_command_line_args()
     implicit none
@@ -59,6 +61,12 @@ contains
           ! Print more output
           if (.not.found_switch_verbose) then
             found_switch_verbose = .true.
+            i = i + 1
+          end if
+        case ('--version')
+          ! Print the code version and exit
+          if (.not.found_switch_version) then
+            found_switch_version = .true.
             i = i + 1
           end if
         case ('--loguniform')
@@ -205,6 +213,15 @@ contains
         end if
       end if is_keyword_arg
     end do loop_over_args
+
+    write(*,*) 'PCHTrees version: ', trim(version)
+
+    if (found_switch_version) then
+      ! Only print the version
+      stop
+    endif
+
+    write(*,*)
 
     if (found_switch_verbose) then
       write(*,*) 'Have', nargs, 'arguments'

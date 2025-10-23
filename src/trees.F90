@@ -12,7 +12,6 @@ program tree
   use Parameter_File
   use IO
   use Commandline
-  use git_version
 #ifdef WITH_HDF5
   use HDF5
 #endif
@@ -87,9 +86,6 @@ program tree
 
   ! Validation
   logical :: data_path_exists
-
-  write(*,*)
-  write(*,*) 'PCHTrees version: ', trim(version)
 
   ! Parse the command line
   call read_command_line_args()
@@ -230,7 +226,8 @@ program tree
     write(0,*)
     write(0,*) "Error! The pchtrees data directory was not found at the following path:"
     write(0,*) trim(pa_runtime%data_path)
-    write(0,*) "Find out where the data directory is and update your parameter file!" 
+    write(0,*) "Find out where the data directory is and update your parameter file!"
+    write(0,*)
     stop
   endif
 
@@ -801,7 +798,9 @@ contains
     nlines = 0
     open(newunit=unit_num, file=trim(path), status="old", action="read", iostat=ierr)
     if (ierr /= 0) then
+        write(0,*)
         write(0,*) "Error opening expansion factor list!"
+        write(0,*)
         stop
     end if
 
