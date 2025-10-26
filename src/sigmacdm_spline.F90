@@ -117,6 +117,7 @@ contains
 
     !     ----------------------------------------------------
     ms = m*sclm
+
     select case (itrans)
     case (0) ! Power-law P(k)
         ! APC: this was previously an abuse of the function parameter alpha, but

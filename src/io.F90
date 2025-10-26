@@ -10,6 +10,7 @@ module IO
   use Parameter_File
   use Overdensity
   use Sigmacdm_Spline
+  use git_version
   implicit none
 
 #ifdef WITH_HDF5
@@ -481,6 +482,8 @@ contains
     call write_group_attr(group_id, 'pspec_infile', trim(pkinfile))
     call write_group_attr(group_id, 'pspec_splinefile', trim(splinefile))
     call write_group_attr(group_id, 'pspec_tffile', trim(tffile))
+
+    call write_group_attr(group_id, 'pchtrees_version', trim(version))
 
     ! Close resources
     call h5gclose_f(group_id, hdferr)

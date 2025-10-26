@@ -72,7 +72,9 @@ OBJECTS := $(addprefix $(BUILD_DIR)/, $(addsuffix .o, $(basename $(SRCS))))
 MOD_DIR := ./build
 
 # Declare all public targets
-.PHONY: all clean debug prepare
+.PHONY: all clean debug prepare .FORCE
+
+.FORCE:
 
 all: prepare pchtrees
 	@echo ''
@@ -86,7 +88,7 @@ prepare:
 	@mkdir -p $(BUILD_DIR)
 
 clean:
-	$(RM) $(addprefix $(BUILD_DIR)/, *.mod *.smod) $(OBJECTS) pchtrees
+	$(RM) $(addprefix $(BUILD_DIR)/, *.mod *.smod) $(OBJECTS) $(BUILD_DIR)/git_version.o pchtrees
 
 debug:
 	@echo "BUILD_TYPE = $(BUILD_TYPE)"
@@ -99,13 +101,39 @@ debug:
 	@echo
 	@echo "OBJS = $(OBJECTS)"
 
+HAVE_GIT := $(shell git --version 2> /dev/null)
+ifdef HAVE_GIT
+define GIT_VER
+module git_version
+implicit none
+character(len=*), parameter :: version = '$(shell git describe --abbrev=4 --dirty --always --tags)'
+end module
+endef
+else
+define GIT_VER
+module git_version
+implicit none
+character(len=*), parameter :: version = 'unknown (no git)'
+end module
+endef
+endif
+
+export GIT_VER
+$(BUILD_DIR)/git_version.o: .FORCE
+	echo "$${GIT_VER}" | gfortran -c -o $@ -ffree-form -xf95 -
+
 $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.F90
 	$(FC) -c $(FC_FLAGS) $(FPP_FLAGS) -J $(MOD_DIR) $(HDF5_INCL_DIR) -o $@ $<
 
 # Dependencies
 ${BUILD_DIR}/defined_types.o: $(addprefix $(BUILD_DIR)/,kind_numbers.o)
+${BUILD_DIR}/commandline.o: $(addprefix $(BUILD_DIR)/,git_version.o)
 ${BUILD_DIR}/memory_modules.o: $(addprefix $(BUILD_DIR)/,defined_types.o)
+<<<<<<< HEAD
 ${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum.o sigmacdm_spline.o)
+=======
+${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum_parameters.o git_version.o power_spectrum.o)
+>>>>>>> af23105a7f0c2792b12f55a21c3a6152ff9f8f4f
 ${BUILD_DIR}/indexxx.o: $(addprefix $(BUILD_DIR)/, num_pars.o)
 ${BUILD_DIR}/memory.o: $(addprefix $(BUILD_DIR)/, memory_modules.o)
 ${BUILD_DIR}/interp.o: $(addprefix $(BUILD_DIR)/, real_comparison.o)
@@ -120,5 +148,5 @@ ${BUILD_DIR}/make_tree.o: $(addprefix $(BUILD_DIR)/, run_statistics.o real_compa
 ${BUILD_DIR}/trees.o: $(addprefix $(BUILD_DIR)/, defined_types.o memory_modules.o tree_routines.o modified_merger_tree.o cosmological_parameters.o runtime_parameters.o split_PCH.o sigmacdm_spline.o)
 
 # Rule for making the executable
-pchtrees: $(OBJECTS)
+pchtrees: $(OBJECTS) $(BUILD_DIR)/git_version.o
 	$(FC) $(FC_FLAGS) $(FPP_FLAGS) -o pchtrees $^ $(HDF5_LIBS)

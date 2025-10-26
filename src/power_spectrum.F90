@@ -8,7 +8,6 @@ module Power_Spectrum
   
   ! Array dimensions
   integer, parameter :: Transfer_Function_Table_N_Max = 1800
- 
   ! Integers
   integer :: itrans
   integer :: igwave,nktab,Trans_Func_Table_N_Points
@@ -40,6 +39,7 @@ module Power_Spectrum
   
   ! Characters
   character(len=1024) :: pkinfile
+  character(len=220)  :: splinefile
   character(len=1024) :: tffile
 
   interface transfer_function

@@ -1,6 +1,7 @@
 module Commandline
+  use git_version
   implicit none
-    
+
   character(len=64) :: arg_pf_path
   character(len=64) :: arg_ntrees
   character(len=64) :: arg_mphalo
@@ -17,6 +18,7 @@ module Commandline
   logical :: found_nlev    = .false.
   logical :: found_switch_defaults = .false.
   logical :: found_switch_verbose  = .false.
+  logical :: found_switch_version  = .false.
   logical :: found_task_no_output_trees  = .false.
   logical :: found_task_process_first_order_progenitors = .false.
 
@@ -30,7 +32,7 @@ module Commandline
   logical :: is_kw_zmax    = .false.
   logical :: is_kw_nlev    = .false.
 
-contains 
+contains
 
   subroutine read_command_line_args()
     implicit none
@@ -59,6 +61,12 @@ contains
           ! Print more output
           if (.not.found_switch_verbose) then
             found_switch_verbose = .true.
+            i = i + 1
+          end if
+        case ('--version')
+          ! Print the code version and exit
+          if (.not.found_switch_version) then
+            found_switch_version = .true.
             i = i + 1
           end if
         case ('--loguniform')
@@ -206,6 +214,15 @@ contains
       end if is_keyword_arg
     end do loop_over_args
 
+    write(*,*) 'PCHTrees version: ', trim(version)
+
+    if (found_switch_version) then
+      ! Only print the version
+      stop
+    endif
+
+    write(*,*)
+
     if (found_switch_verbose) then
       write(*,*) 'Have', nargs, 'arguments'
       if (found_switch_verbose)  call write_kw_or_pos('verbose',  .true.)
@@ -247,21 +264,22 @@ contains
   subroutine usage()
     implicit none
 
-    write(*,*) 
+    write(*,*)
     write(*,*) 'Usage: ./pchtrees parameter_file_path ntrees mphalo ahalo zmax [options]'
-    write(*,*) 
-    write(*,*) 'Options (positional or by keyword):' 
+    write(*,*)
+    write(*,*) 'Options (positional or by keyword):'
     write(*,*) 'path   (--path  ) : path to parameter file in TOML format'
     write(*,*) 'ntrees (--ntrees) : integer number of trees to generate (1)'
     write(*,*) 'mphalo (--mphalo) : target mass of tree root notes (1e12 Msol)'
     write(*,*) 'ahalo  (--ahalo)  : Expansion factor at root of tree (1.0)'
-    write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)' 
-    write(*,*) 
+    write(*,*) 'zmax   (--zmax)   : highest redshift in tree (4.0)'
+    write(*,*)
     write(*,*) 'Options (keyword only):'
     write(*,*) '--nlev : number of levels in tree'
     write(*,*) '--mmax : upper limit of mass sampling range'
     write(*,*) '--loguniform : random uniform sampling in log10 mass'
-    write(*,*) 
+    write(*,*) '--version : print code version, then stop'
+    write(*,*)
 
   end subroutine usage
 

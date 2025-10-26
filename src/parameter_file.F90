@@ -181,16 +181,18 @@ contains
     endif
 
     ! Check the PF exists. If it doesn't, we must be dumping the defaults.
-    inquire(file=file_name_in, exist=file_exists)
+    inquire(file=trim(file_name_in), exist=file_exists)
     if (.not.file_exists) then
-      if (dump_parameters) then     
+      if (dump_parameters) then
         dump_with_no_pf = .true.
       else
-        if (len(file_name_in).gt.0) then
-          write (stderr, '("Error: Parameter file ", a, " not found")') file_name_in
+        write (stderr, *)
+        if (len(trim(file_name_in)).gt.0) then
+          write (stderr, '("Error: Parameter file ", a, " not found")') trim(file_name_in)
         else
-          write (stderr,*) "Error: You have to supply a parameter file!"
+          write (stderr, '("Error: Missing parameter file path!")')
         endif
+        write (stderr, *)
         stop
       endif
     end if
@@ -289,27 +291,7 @@ contains
       & pa_output%have_aexp_list,                &
       & pa_output%aexp_list)
 
-    !temp_keyval = section%get('aexp_list', error=.false.)
-    !pa_output%have_aexp_list = .false.
-    !select case(temp_keyval%error_code)
-    !case (KEY_NOT_FOUND)
-    !  ! No axep list, ok
-    !  ! Not really needed, but no "pass" in Fortran...
-    !  pa_output%have_aexp_list = .false.
-    !case (SUCCESS)
-    !  call read_value(temp_keyval, pa_output%aexp_list)
-    !  ! Only sanity check is that an empty value is
-    !  ! counted as no value
-    !  if (len(trim(pa_output%aexp_list)).gt.0) then
-    !    pa_output%have_aexp_list = .true.
-    !  else
-    !    pa_output%have_aexp_list = .false.
-    !  endif
-    !case default
-    !  write(*,*) 'Bad news!'
-    !  stop
-    !end select
-
+    ! Optional zred list
     call read_optional_string_parameter(section, &
       & 'zred_list',                             &
       & pa_output%have_zred_list,                &
@@ -463,7 +445,7 @@ contains
       write(output_unit, *) 'Unsupported type'
     end select
   end subroutine print_kv
-  
+
   ! ############################################################
   subroutine read_optional_string_parameter(section, param_name, &
       & have_param_flag, param_store)
@@ -477,9 +459,13 @@ contains
     character(len=:), allocatable, intent(INOUT) :: param_store
 
     type(toml_object) :: temp_keyval
-    
+
+    ! error = .false. required here because the parameter is
+    ! *optional*; we want to return and continue reading other
+    ! parameters if we don't find it.
     temp_keyval = section%get(param_name, error=.false.)
     have_param_flag = .false.
+
     select case(temp_keyval%error_code)
     case (KEY_NOT_FOUND)
       ! No parameter, ok
@@ -495,8 +481,11 @@ contains
         have_param_flag = .false.
       endif
     case default
-      write(*,*) 'FATAL: Failed to read optional string parameter: ', trim(param_name)
+      write(*,*)
+      write(*,*) 'FATAL: Failed reading parameter file'
+      write(*,*) '       When reading optional string parameter: ', trim(param_name)
       write(*,*) '       Error code: ', temp_keyval%error_code
+      write(*,*)
       stop
     end select
   end subroutine read_optional_string_parameter
