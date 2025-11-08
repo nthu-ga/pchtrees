@@ -162,8 +162,10 @@ contains
     implicit none
     !
     ! Integers
-    integer i,imod,io,k,khi,klo,NMOD
+    integer i,imod,k,khi,klo,NMOD
     
+    integer :: ioerr
+
     integer :: NSPL_FILE ! Lines read from input file
     
     ! Array dimensions
@@ -199,6 +201,8 @@ contains
       nspec = 0.01*nint(100.0*nspec)
       write (sform,'(sp,f6.3,ss)') dndlnk
 
+      ! Construct the name for the spline file
+
       ! APC: FIXME The a30 thing here is a bit silly but better than a25! :)
       ! APC: FIXME split off the root path and prepend it afterwards.
       select case (itrans)
@@ -217,27 +221,27 @@ contains
           &  TRIM(pa_runtime%data_path)//'/Power_Spec/sigmacdm_',nspec,'_',trim(sform),'_',kref &
           &,'.spline.',itrans
       end select
-
       splinefile = adjustl(splinefile)
 
-      io=0
+      ! Read or write the spline file
+      ioerr = 0
       open (10,file=trim(splinefile),status='unknown')
-      read (10,*,iostat=io) NSPL_FILE
-      if (io.ne.0) then
+      read (10,*,iostat=ioerr) NSPL_FILE
+      if (ioerr.ne.0) then
           close (10)
 #ifdef INFO
           write (0,*) 'spline_interp(): INFO - spline file not present, creating it with make_spline()'
 #endif
           call make_spline()
-          io=0
+          ioerr = 0
           open (10,file=trim(splinefile),status='unknown') 
-          read (10,*,iostat=io) NSPL_FILE
+          read (10,*,iostat=ioerr) NSPL_FILE
        end if
        if (NSPL_FILE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch NSPL != NSPL_FILE'
        do i=1,NSPL
-          read (10,*,iostat=io) m(i),s(i),s2(i),a(i),a2(i)
+          read (10,*,iostat=ioerr) m(i),s(i),s2(i),a(i),a2(i)
        end do
-       if (io.ne.0) then
+       if (ioerr.ne.0) then
           write (0,*) 'spline_interp(): FATAL - error reading ',trim(splinefile)
           write (0,*) '                         Run make_sigma_spline() subroutine with nspec = ',nspec
           write (0,*) '                         to create the required file.'
