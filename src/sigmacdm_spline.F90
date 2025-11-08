@@ -183,7 +183,7 @@ contains
     character sform*10
     !
     ! Saves
-    save a,a2,hp,hp2,imod,invhp,kphi,kplo,m,s,s2
+    save a,a2,hp,hp2,imod,invhp,kphi,kplo,s,s2
     
     logical, save :: first_call = .true.
  
