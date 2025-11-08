@@ -165,7 +165,7 @@ contains
     integer i,imod,k,khi,klo,NMOD
     
     integer :: ioerr
-
+    logical :: spline_file_exists
     integer :: NSPL_FILE ! Lines read from input file
     
     ! Array dimensions
@@ -224,34 +224,37 @@ contains
       splinefile = adjustl(splinefile)
 
       ! Read or write the spline file
-      ioerr = 0
-      open (10,file=trim(splinefile),status='unknown')
-      read (10,*,iostat=ioerr) NSPL_FILE
-      if (ioerr.ne.0) then
-          close (10)
-#ifdef INFO
-          write (0,*) 'spline_interp(): INFO - spline file not present, creating it with make_spline()'
-#endif
-          call make_spline()
-          ioerr = 0
-          open (10,file=trim(splinefile),status='unknown') 
-          read (10,*,iostat=ioerr) NSPL_FILE
-       end if
-       if (NSPL_FILE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch NSPL != NSPL_FILE'
-       do i=1,NSPL
-          read (10,*,iostat=ioerr) m(i),s(i),s2(i),a(i),a2(i)
-       end do
-       if (ioerr.ne.0) then
-          write (0,*) 'spline_interp(): FATAL - error reading ',trim(splinefile)
-          write (0,*) '                         Run make_sigma_spline() subroutine with nspec = ',nspec
-          write (0,*) '                         to create the required file.'
-          stop
-       end if
-       close (10)        
 
-       first_call = .false.
+      ! Check if spline file exists
+      inquire(file=trim(splinefile), exist=spline_file_exists)
+      if (spline_file_exists) then
+          write (0,*) 'spline_interp(): Reading spline from: ', trim(splinefile)
+      else
+          write (0,*) 'spline_interp(): spline file not present, creating it with make_spline()'
+          call make_spline()
+          write (0,*) 'spline_interp(): Wrote spline file to: ', trim(splinefile)
+      end if
+
+      ! We can assume the spline file exists
+      open(10,file=trim(splinefile),status='old',action='read')
+      read(10,*,iostat=ioerr) NSPL_FILE
+      if (NSPL_FILE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch NSPL != NSPL_FILE'
+
+      ! Read each line
+      do i=1,NSPL
+        read(10,*,iostat=ioerr) m(i),s(i),s2(i),a(i),a2(i)
+      end do
+      if (ioerr.ne.0) then
+        write (0,*) 'spline_interp(): FATAL - error reading ',trim(splinefile)
+        write (0,*) '                         Run make_sigma_spline() subroutine with nspec = ',nspec
+        write (0,*) '                         to create the required file.'
+        stop
+      end if
+      close(10)        
+
+      first_call = .false.
     end if
-    !
+    
     imod=1+mod(imod,NMOD)
     klo=kplo(imod)  ! Look at position NMOD calls ago
     khi=kphi(imod)
