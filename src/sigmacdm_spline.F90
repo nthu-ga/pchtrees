@@ -6,29 +6,6 @@ module Sigmacdm_Spline
   use File_Utils
 
   implicit none
-  !     This is the top-level routine for computing sigma(M).
-  !     It returns both sigma and alpha = dln(sigma)/dlnM.
-  !     
-  !     It handles various cases, depending on value of itrans:
-  !
-  !     itrans<0: uses tabulated P(k) read in from file
-  !     itrans=0: uses power-law P(k) propto k^nspec
-  !     1<= itrans <= 9: uses analytical CDM power spectrum 
-  !                      P(k) propto k^nspec T(k)^2
-  !     itrans=10: uses analytical WDM power spectrum 
-  !                      P(k) propto k^nspec T(k)^2
-  !     
-  !     For the analytical CDM & WDM cases (itrans>0) it uses the variable Gamma.
-  !     
-  !     In all cases:
-  !
-  !     The input mass M is assumed to be in units Msun/h
-  !     sigma(M) is normalized to the sigma8 read in by parameters()
-  !     (overriding any normalization e.g. in an input file)
-  !     
-  !     On the first call, it calculates coefficients for a spline fit to
-  !     sigma(M), and also scaling factors sclm and scla for the mass and
-  !     normalization.
 
   ! Number of k values in power spectrum integration 
   integer, parameter :: NT=100000 
@@ -36,21 +13,49 @@ module Sigmacdm_Spline
   ! Number of spline evaluation points
   integer, parameter :: NSPL=200
 
+  ! Spline mass evaluation points
+  real, target :: spline_mass(NSPL) 
+
   ! Path to tabulated spline fit
   character(len=220)  :: splinefile
   
   ! Flag to signal initializtion of spline
-  sigmacdm_spline_setup_complete = .false.
+  logical :: sigmacdm_spline_setup_complete = .false.
 
   public :: sigmacdm, splinefile
-
+  public :: spline_mass
   public :: sigmacdm_spline_setup_complete
 
 contains
 
   real function sigmacdm(m, alpha, reset)
+
+    ! This is the top-level routine for computing sigma(M).
+    ! It returns both sigma and alpha = dln(sigma)/dlnM.
+    ! 
+    ! It handles various cases, depending on value of itrans:
+    !
+    ! itrans<0: uses tabulated P(k) read in from file
+    ! itrans=0: uses power-law P(k) propto k^nspec
+    ! 1<= itrans <= 9: uses analytical CDM power spectrum 
+    !                  P(k) propto k^nspec T(k)^2
+    ! itrans=10: uses analytical WDM power spectrum 
+    !                  P(k) propto k^nspec T(k)^2
+    ! 
+    ! For the analytical CDM & WDM cases (itrans>0) it uses the variable Gamma.
+    ! 
+    ! In all cases:
+    !
+    ! The input mass M is assumed to be in units Msun/h
+    ! sigma(M) is normalized to the sigma8 read in by parameters()
+    ! (overriding any normalization e.g. in an input file)
+    ! 
+    ! On the first call, it calculates coefficients for a spline fit to
+    ! sigma(M), and also scaling factors sclm and scla for the mass and
+    ! normalization.
+
     implicit none
-    
+
     real, intent(in)  :: m
     real, intent(in)  :: alpha
     logical, intent(in), optional :: reset
@@ -157,17 +162,23 @@ contains
     implicit none
     !
     ! Integers
-    integer i,imod,io,k,khi,klo,NMOD,NSPLINE
-    !
+    integer i,imod,io,k,khi,klo,NMOD
+    
+    integer :: NSPL_FILE ! Lines read from input file
+    
     ! Array dimensions
     parameter(NMOD=2)
     !
     ! Integer arrays
     integer kphi(NMOD),kplo(NMOD)
-    !
+    
     ! Floats
-    real a2(NSPL),a3,aa,alpha,a(NSPL),b3,bb,h,h2,hp2(NMOD),hp(NMOD),invh,invhp(NMOD),m(NSPL),ms,s2(NSPL),sigma,s(NSPL)
-    !
+    real, pointer :: m(:)
+   
+    real :: a2(NSPL),a3,aa,alpha,a(NSPL),b3,bb,h,h2
+    real :: hp2(NMOD),hp(NMOD),invh,invhp(NMOD)
+    real :: ms,s2(NSPL),sigma,s(NSPL)
+  
     ! Characters
     character sform*10
     !
@@ -175,7 +186,10 @@ contains
     save a,a2,hp,hp2,imod,invhp,kphi,kplo,m,s,s2
     
     logical, save :: first_call = .true.
-    
+ 
+    ! Rename from module level
+    m => spline_mass
+
     ! On first call set initial values and read the spline fit
     if (first_call) then
       kplo  = NSPL
@@ -208,7 +222,7 @@ contains
 
       io=0
       open (10,file=trim(splinefile),status='unknown')
-      read (10,*,iostat=io) NSPLINE
+      read (10,*,iostat=io) NSPL_FILE
       if (io.ne.0) then
           close (10)
 #ifdef INFO
@@ -217,9 +231,9 @@ contains
           call make_spline()
           io=0
           open (10,file=trim(splinefile),status='unknown') 
-          read (10,*,iostat=io) NSPLINE
+          read (10,*,iostat=io) NSPL_FILE
        end if
-       if (NSPLINE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch of NSPL( != NSPLINE)'
+       if (NSPL_FILE.ne.NSPL) stop 'spline_interp(): FATAL - mismatch NSPL != NSPL_FILE'
        do i=1,NSPL
           read (10,*,iostat=io) m(i),s(i),s2(i),a(i),a2(i)
        end do

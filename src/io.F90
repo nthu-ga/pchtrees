@@ -407,35 +407,48 @@ contains
     sclk  = gamma
     ! Powerspectrum scales as (a^2) * (gamma^3), where
     ! a : factor that scales sigma
-    sclpk = (scla**2)*(gammma**3)
+    sclpk = (scla**2)*(gamma**3)
 
     call write_1d_array_real(filename, '/Powerspec/k',  exp(lnktab*sclk))
     call write_1d_array_real(filename, '/Powerspec/Pk', exp(lnpktab*sclpk))
-    call write_1d_array_real(filename, '/Powerspec/k_rescale',  sclk)
-    call write_1d_array_real(filename, '/Powerspec/pk_rescale', sclpk)
+    call write_1d_array_real(filename, '/Powerspec/k_rescale',  (/ sclk  /) )
+    call write_1d_array_real(filename, '/Powerspec/pk_rescale', (/ sclpk /) )
 
     ! These are module variables from power_spectrum.F90
-    call write_1d_array_real(filename, '/Powerspec/sigma_rescale', scla)
-    call write_1d_array_real(filename, '/Powerspec/mass_rescale',  sclm)
+    call write_1d_array_real(filename, '/Powerspec/sigma_rescale', (/ scla /) )
+    call write_1d_array_real(filename, '/Powerspec/mass_rescale',  (/ sclm /) )
 
   end subroutine write_power_specturm
 
   ! ############################################################ 
   subroutine write_sigma_table(filename)
+    !
+    ! Writes the sigma(M) spline table.
+    ! 
     implicit none
+
+    ! NSPL is a module variable from sigmacdm_spline
+    real :: spline_sigma(NSPL)
+    real :: alpha_unused
 
     character(len=*), intent(in)  :: filename      ! HDF5 file name
 
     integer(hid_t) :: file_id, group_id
     integer :: hdferr
 
+    integer :: i ! Loop counter
+
     if (.not.sigmacdm_spline_setup_complete) then
       stop
     endif
 
-    call write_1d_array_real(filename, '/Sigma/k',  exp(lnktab*sclk))
-    call write_1d_array_real(filename, '/Sigma/sigma_spline', sigmacdm)
+    do i=1, NSPL
+      call spline_interp(spline_mass(i), spline_sigma(i), alpha_unused)
+    end do
 
+    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass)
+    call write_1d_array_real(filename, '/Sigma/spline_sigma', spline_sigma)
+  
   end subroutine write_sigma_table
 
   ! ############################################################ 

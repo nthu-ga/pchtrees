@@ -129,11 +129,7 @@ $(OBJECTS): $(BUILD_DIR)/%.o : $(SRC_DIR)/%.F90
 ${BUILD_DIR}/defined_types.o: $(addprefix $(BUILD_DIR)/,kind_numbers.o)
 ${BUILD_DIR}/commandline.o: $(addprefix $(BUILD_DIR)/,git_version.o)
 ${BUILD_DIR}/memory_modules.o: $(addprefix $(BUILD_DIR)/,defined_types.o)
-<<<<<<< HEAD
-${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum.o sigmacdm_spline.o)
-=======
-${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o power_spectrum_parameters.o git_version.o power_spectrum.o)
->>>>>>> af23105a7f0c2792b12f55a21c3a6152ff9f8f4f
+${BUILD_DIR}/io.o: $(addprefix $(BUILD_DIR)/, memory.o memory_modules.o tree_routines.o cosmological_parameters.o runtime_parameters.o time_parameters.o deltcrit.o git_version.o power_spectrum.o)
 ${BUILD_DIR}/indexxx.o: $(addprefix $(BUILD_DIR)/, num_pars.o)
 ${BUILD_DIR}/memory.o: $(addprefix $(BUILD_DIR)/, memory_modules.o)
 ${BUILD_DIR}/interp.o: $(addprefix $(BUILD_DIR)/, real_comparison.o)

@@ -39,7 +39,6 @@ module Power_Spectrum
   
   ! Characters
   character(len=1024) :: pkinfile
-  character(len=220)  :: splinefile
   character(len=1024) :: tffile
 
   interface transfer_function
