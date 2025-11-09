@@ -454,8 +454,9 @@ contains
 
     ! Scale sigma returned from the spline interpolation by scla, to ensure
     ! the correct sigma8 normalization, and scale masses to be consistent with
-    ! the input values of Omega0 and gamma.
-    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass*sclm)
+    ! the input values of Omega0 and gamma (*divide* by sclm, because spline_mass
+    ! is spline_mass = true_mass*sclm)
+    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass/sclm)
     call write_1d_array_real(filename, '/Sigma/spline_sigma', spline_sigma*scla)
   
   end subroutine write_sigma_table
