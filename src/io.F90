@@ -417,6 +417,7 @@ contains
     ! These are module variables from power_spectrum.F90
     call write_1d_array_real(filename, '/Powerspec/sigma_rescale', (/ scla /) )
     call write_1d_array_real(filename, '/Powerspec/mass_rescale',  (/ sclm /) )
+    call write_1d_array_real(filename, '/Powerspec/m8', (/ M8CRIT*omega0 /) )
 
   end subroutine write_power_specturm
 
@@ -424,7 +425,10 @@ contains
   subroutine write_sigma_table(filename)
     !
     ! Writes the sigma(M) spline table.
-    ! 
+    !
+    ! Mass and sigma are normalized according to the sigma8 given
+    ! in the parameter file (see sigmacdm_spline).
+    !
     implicit none
 
     ! NSPL is a module variable from sigmacdm_spline
@@ -443,11 +447,16 @@ contains
     endif
 
     do i=1, NSPL
+      ! nb. don't rescale the input mass here -- we're using the tabulated
+      ! masses, which are rescaled by construction.
       call spline_interp(spline_mass(i), spline_sigma(i), alpha_unused)
     end do
 
-    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass)
-    call write_1d_array_real(filename, '/Sigma/spline_sigma', spline_sigma)
+    ! Scale sigma returned from the spline interpolation by scla, to ensure
+    ! the correct sigma8 normalization, and scale masses to be consistent with
+    ! the input values of Omega0 and gamma.
+    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass*sclm)
+    call write_1d_array_real(filename, '/Sigma/spline_sigma', spline_sigma*scla)
   
   end subroutine write_sigma_table
 

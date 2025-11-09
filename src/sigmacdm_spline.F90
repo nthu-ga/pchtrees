@@ -14,6 +14,7 @@ module Sigmacdm_Spline
   integer, parameter :: NSPL=200
 
   ! Spline mass evaluation points
+  ! These are scaled masses (see below)
   real, target :: spline_mass(NSPL) 
 
   ! Path to tabulated spline fit
@@ -60,7 +61,8 @@ contains
     real, intent(in)  :: alpha
     logical, intent(in), optional :: reset
 
-    real :: ms, m8, sigma, alpha_power_law
+    real :: ms, sigma, alpha_power_law
+    real :: m8
 
     logical, save :: first_call = .true.
     logical       :: resetting
@@ -82,32 +84,33 @@ contains
     if (first_call.or.resetting) then
        
       m8 = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
+
       transfer_function: select case (itrans)
         case (:-1) ! Read P(k) from input file.
           if (.not.pkfile_read) then
             call read_pkfile()
           endif
-
           ! Mass scaling not used in this case.
           sclm = 1.0
           ! Calc sigma8 for input spectrum
           call spline_interp(m8,sigma,alpha)
-          
         case (0) ! Power-law P(k)
-          m8    = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
           sclm  = 1.0/m8
           ms    = m8*sclm         
           sigma = ms**(-(nspec+3.0)/6.0)
         case default ! Analytic CDM or WDM P(k)
           ! Compute the required scaling factors sclm and scla.
           sclm = gamma**3/omega0
-          m8   = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
-          ms   = m8*sclm
+          ! APC: scale this mass for the spline interpolation
+          ms = m8*sclm
           ! The spline fit to CDM for Gamma=1.
           call spline_interp(ms,sigma,alpha)
        end select transfer_function
 
-       scla = sigma8/sigma  ! scales sigma_8 to required value
+       ! APC: this is the factor by which we need to scale the value returned
+       ! APC: from the spline interpolation (to which we passed a scaled mass),
+       ! APC: such that sigma8 has the value requested in the parameter file.
+       scla = sigma8/sigma
            
        write(*,*) 'DEBUG    m8 = ', m8
        write(*,*) 'DEBUG  sclm = ', sclm
@@ -121,6 +124,9 @@ contains
     end if
 
     !     ----------------------------------------------------
+
+    ! APC: we scaling the input mass by a factor of sclm, and used the scaled
+    ! APC: value for the spline lookup.
     ms = m*sclm
 
     select case (itrans)
@@ -132,6 +138,7 @@ contains
     case default ! CDM or WDM or tabulated
        ! Use spline fit
        call spline_interp(ms,sigma,alpha)
+       ! APC: we scale the resulting sigma value by a factor scla
        sigmacdm = sigma*scla
     end select
     return
@@ -174,7 +181,7 @@ contains
     ! Integer arrays
     integer kphi(NMOD),kplo(NMOD)
     
-    ! Floats
+    ! Pointer for variable renaming
     real, pointer :: m(:)
    
     real :: a2(NSPL),a3,aa,alpha,a(NSPL),b3,bb,h,h2
@@ -255,9 +262,9 @@ contains
       first_call = .false.
     end if
     
-    imod=1+mod(imod,NMOD)
-    klo=kplo(imod)  ! Look at position NMOD calls ago
-    khi=kphi(imod)
+    imod = 1 + mod(imod,NMOD)
+    klo  = kplo(imod)  ! Look at position NMOD calls ago
+    khi  = kphi(imod)
     if (ms.lt.m(1)) then
        write (0,*) 'spline_interp(): FATAL - mass out of range.'
        write (0,*) '                 sigmacdm() was called with mass = ',ms/sclm     
@@ -273,60 +280,61 @@ contains
        write (0,*) '                 ms = ',ms ,' compared to the upper limit of ',m(NSPL)
        stop
     else 
-       if (m(khi).lt.ms .or. m(klo).gt.ms ) then ! Short cut if ms close to last
-          klo=1                                  ! call, otherwise do binary search
-          khi=NSPL
+       if ( (m(khi).lt.ms) .or. (m(klo).gt.ms) ) then ! Short cut if ms close to last
+          klo = 1                                     ! call, otherwise do binary search
+          khi = NSPL
           do while (khi-klo.gt.1) 
-             k=(khi+klo)/2
+             k = (khi+klo)/2
              if(m(k).gt.ms)then
-                khi=k
+                khi = k
              else
-                klo=k
+                klo = k
              endif
           end do
-          h=m(khi)-m(klo)        ! Compute h factors.
-          h2=(h**2)*0.1666667 
-          invh=1.0/h
-          !
-          hp(imod)=h             ! Store for later call.
-          invhp(imod)=invh
-          hp2(imod)=h2
-          kplo(imod)=klo
-          kphi(imod)=khi
+          h    = m(khi) - m(klo)    ! Compute h factors.
+          h2   = (h**2)*0.1666667 
+          invh = 1.0/h
+          
+          hp(imod)    = h             ! Store for later call.
+          invhp(imod) = invh
+          hp2(imod)   = h2
+          kplo(imod)  = klo
+          kphi(imod)  = khi
        else
-          h=hp(imod)             ! Look up corresponding h factors.
-          invh=invhp(imod)
-          h2=hp2(imod)
+          h     = hp(imod)            ! Look up corresponding h factors.
+          invh  = invhp(imod)
+          h2    = hp2(imod)
        end if
-       !            
-       aa=(m(khi)-ms)*invh
-       bb=(ms-m(klo))*invh
-       a3=(aa**3-aa)
-       b3=(bb**3-bb)
-       sigma=aa*s(klo)+bb*s(khi)+(a3*s2(klo)+b3*s2(khi))*h2 ! Linear interpolation + spline.
-       alpha=aa*a(klo)+bb*a(khi)+(a3*a2(klo)+b3*a2(khi))*h2 ! Linear interpolation + spline.
+               
+       aa = (m(khi)-ms)*invh
+       bb = (ms-m(klo))*invh
+       a3 = (aa**3-aa)
+       b3 = (bb**3-bb)
+       sigma = aa*s(klo) + bb*s(khi) + (a3*s2(klo) + b3*s2(khi))*h2 ! Linear interpolation + spline.
+       alpha = aa*a(klo) + bb*a(khi) + (a3*a2(klo) + b3*a2(khi))*h2 ! Linear interpolation + spline.
     end if
     return
   end subroutine spline_interp
 
-  !
-  !  Fit a spline to sigma versus M.
-  !
-  !
-  !  Compute sigma(M) and the logarithmic slope alpha(m)
-  !  both from the old trusty fit and directly by integrating P(k).
-  !
-  !  This version sets Omega_0=h=Gamma=sigma_8=1. sigma(m) for
-  !  other values of Gamma and sigma_8 can then be computed from
-  !  this fit by two simple scaling of the mass and amplitude.
-  !  See the implementation in subroutine sigmacdm_spline.f .
-  !
-  !  The numerical integration is more accurate than the trusty fit
-  !  which is good to a few percent for M>10^10 Msol.
-  ! 
+  ! ############################################################
   subroutine make_spline
+    !
+    !  Fit a spline to sigma versus M.
+    !
+    !
+    !  Compute sigma(M) and the logarithmic slope alpha(m)
+    !  both from the old trusty fit and directly by integrating P(k).
+    !
+    !  This version sets Omega_0=h=Gamma=sigma_8=1. sigma(m) for
+    !  other values of Gamma and sigma_8 can then be computed from
+    !  this fit by two simple scaling of the mass and amplitude.
+    !  See the implementation in subroutine sigmacdm_spline.f .
+    !
+    !  The numerical integration is more accurate than the trusty fit
+    !  which is good to a few percent for M>10^10 Msol.
+    ! 
     implicit none
-    
+
     integer :: i,ik
     real    :: x(NSPL),y(NSPL),y2(NSPL),yp1,ypn,logm,a(NSPL),a2(NSPL)
     real    :: m,sigma,lnk,lnkmin,lnkmax,dlnk,sum,pw2k3,rf,pwdwk3,alph,suma
