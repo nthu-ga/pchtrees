@@ -182,9 +182,12 @@ contains
     first_call = .false.
   end subroutine pkfacs
 
-  ! APC: This stores the analytic powerspectrum for output.
-  ! APC: This tabulation has no other use in the code.
+  ! ############################################################
   subroutine tabulate_pk_for_output(Gamma_eff)
+    !
+    ! APC: This stores the analytic powerspectrum for output.
+    ! APC: This tabulation has no other use in the code.
+    !
     implicit none
 
     real, intent(IN) :: Gamma_eff
