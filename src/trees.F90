@@ -645,7 +645,7 @@ program tree
         & ntrees_per_file(ifile), ntrees, nfiles)
     
       ! Write the tabulated power spectrum
-      call write_power_specturm(file_path)
+      call write_power_spectrum(file_path)
       ! Write the tabulated Sigma(M)
       call write_sigma_table(file_path)
     end do

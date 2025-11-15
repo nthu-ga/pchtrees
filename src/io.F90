@@ -387,7 +387,7 @@ contains
   end subroutine write_tree_table
   
   ! ############################################################ 
-  subroutine write_power_specturm(filename)
+  subroutine write_power_spectrum(filename)
     implicit none
 
     character(len=*), intent(in)  :: filename      ! HDF5 file name
@@ -419,7 +419,7 @@ contains
     call write_1d_array_real(filename, '/Powerspec/mass_rescale',  (/ sclm /) )
     call write_1d_array_real(filename, '/Powerspec/m8', (/ M8CRIT*omega0 /) )
 
-  end subroutine write_power_specturm
+  end subroutine write_power_spectrum
 
   ! ############################################################ 
   subroutine write_sigma_table(filename)
