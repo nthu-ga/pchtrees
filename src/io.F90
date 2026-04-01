@@ -403,14 +403,22 @@ contains
 
     ! gamma is a module variable from power_spectrum.F90
 
-    ! Wavenumbers scale as gamma
+    ! Log wavenumbers scale as gamma
     sclk  = gamma
     ! Powerspectrum scales as (a^2) * (gamma^3), where
     ! a : factor that scales sigma
     sclpk = (scla**2)*(gamma**3)
 
-    call write_1d_array_real(filename, '/Powerspec/k',  exp(lnktab*sclk))
-    call write_1d_array_real(filename, '/Powerspec/Pk', exp(lnpktab*sclpk))
+    ! We output the rescaled power spectrum. A tabulated input spectrum is
+    ! considered "unscaled", so this rescaled output will *not* look like the
+    ! tabulated input. To recover the tabulated input, undo the scaling with the
+    ! reverse operation (i.e. take the log and multiply by k_rescale or
+    ! pk_rescale).
+
+    ! All scaled output should be directly comparable.
+
+    call write_1d_array_real(filename, '/Powerspec/k',  exp(lnktab))
+    call write_1d_array_real(filename, '/Powerspec/Pk', exp(lnpktab))
     call write_1d_array_real(filename, '/Powerspec/k_rescale',  (/ sclk  /) )
     call write_1d_array_real(filename, '/Powerspec/pk_rescale', (/ sclpk /) )
 

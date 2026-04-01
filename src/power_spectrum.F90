@@ -67,7 +67,8 @@ contains
     case (1:)
       ! If we don't have tabulated powerspectrum already,
       ! make one now so we can write it out later.
-      call tabulate_pk_for_output(POWER_SPEC_GAMMA_EFF)
+      !call tabulate_pk_for_output(POWER_SPEC_GAMMA_EFF)
+      call tabulate_pk_for_output(gamma)
     case default
       write(*,*) 'FATAL: init_power_spec_tables(): unsupported itrans=',itrans
     end select
@@ -112,7 +113,9 @@ contains
 
     ! Multiply by primordial P(k) propto k^nspec to get final P(k)
     neff = nspec+0.5*dndlnk*log(k/kref)
-    pk_only = (trans**2)*(k/KHORIZON)**neff ! P(k)
+
+    ! APC: KHORIZON = H0/c in Mpc for h=1
+    pk_only = (trans**2)*((k/KHORIZON)**neff) ! P(k)
     return
   end function pk_only
 
@@ -221,6 +224,8 @@ contains
     !
     ! APC: Selects a transfer function according to the global variable
     ! APC: itrans. FIXME: no reason itrans can't be passed as a parameter.
+    ! 
+    ! APC : FIXME do we need to pass both q and k?
 
     ! Floats
     real, intent(in) :: k, q, Gamma_eff
@@ -294,7 +299,11 @@ contains
   end function transfer_function_BE
 
   real function transfer_function_BBKS_CDM(q)
+    !
     ! Returns the BBKS CDM transfer function
+    !
+    ! APC: q (= k / gamma) is passed as input
+
     implicit none
     real, intent(in) :: q
     transfer_function_BBKS_CDM = (log(1.0+2.34*q)/(2.34*q**2))/((1.0/q)**4+3.89/q**3+(16.1/q)**2+5.46**3/q+6.71**4)**0.25

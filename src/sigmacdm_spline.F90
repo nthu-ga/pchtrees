@@ -85,7 +85,10 @@ contains
        
       m8 = M8CRIT*omega0 ! The mass within an 8Mpc/h sphere.
 
-      transfer_function: select case (itrans)
+      ! APC: calculate "unnormalized" sigma8 using power spectrum
+      ! APC: supplied or using one of the built-in transfer functions.
+
+      unnormalized_sigma8: select case (itrans)
         case (:-1) ! Read P(k) from input file.
           if (.not.pkfile_read) then
             call read_pkfile()
@@ -105,11 +108,12 @@ contains
           ms = m8*sclm
           ! The spline fit to CDM for Gamma=1.
           call spline_interp(ms,sigma,alpha)
-       end select transfer_function
+       end select unnormalized_sigma8
 
        ! APC: this is the factor by which we need to scale the value returned
        ! APC: from the spline interpolation (to which we passed a scaled mass),
        ! APC: such that sigma8 has the value requested in the parameter file.
+       ! APC: i.e. (sigma8) / (unnormalized sigma8)
        scla = sigma8/sigma
            
        write(*,*) 'DEBUG    m8 = ', m8
@@ -321,14 +325,14 @@ contains
     !
     !  Fit a spline to sigma versus M.
     !
-    !
     !  Compute sigma(M) and the logarithmic slope alpha(m)
     !  both from the old trusty fit and directly by integrating P(k).
     !
-    !  This version sets Omega_0=h=Gamma=sigma_8=1. sigma(m) for
-    !  other values of Gamma and sigma_8 can then be computed from
-    !  this fit by two simple scaling of the mass and amplitude.
-    !  See the implementation in subroutine sigmacdm_spline.f .
+    !  This version sets Omega_0=h=Gamma=sigma_8=1.
+    !
+    !  sigma(m) for other values of Gamma and sigma_8 can then be computed from
+    !  this fit by two simple scaling of the mass and amplitude. See the
+    !  implementation in subroutine sigmacdm_spline.f .
     !
     !  The numerical integration is more accurate than the trusty fit
     !  which is good to a few percent for M>10^10 Msol.
