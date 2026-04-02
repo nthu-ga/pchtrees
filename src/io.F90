@@ -741,13 +741,13 @@ contains
       tree_snapnum(inode) = nlevels - This_Node%jlevel
       tree_mass(inode) = This_Node%mhalo
 
-      ! Record progenitor
+      ! Record progenitor(s) by looping over children
       ! Increment branch index after processing leaf nodes
       if (associated(This_Node%child)) then
         Child_Node => This_Node%child
-        
+
         tree_first_progenitor(inode) = pch_to_df_index(Child_Node%index) - 1 ! 0-based 
-        tree_first_descendant(inode) = pch_to_df_index(This_Node%index) - 1 ! 0-based 
+        tree_first_descendant(inode_child) = pch_to_df_index(This_Node%index) - 1 ! 0-based
       
         ! Create next progenitor links for non-leaf nodes
         do while (associated(Child_Node%sibling)) 
@@ -762,9 +762,12 @@ contains
           ! All children descend to the same progenitor
           tree_descendant(inode_child) = inode - 1 !  0-based
 
+          ! Loop until no more siblings of child.
           if (associated(Child_Node%sibling)) Child_Node => Child_Node%sibling
         end do
       else
+        ! We have found a leaf node. The next tree walk step will put us on a
+        ! new branch. Increment the branch counter now.
         ibranch = ibranch + 1
       endif
 
