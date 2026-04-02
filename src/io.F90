@@ -730,7 +730,8 @@ contains
     This_Node => Tree_Root
     inode   = 1
     ibranch = 1
-    
+   
+    ! Walk nodes in depth first order
     do while (associated(This_Node))
       tree_index_pch(inode) = This_Node%index - 1 ! 0-based
       
@@ -746,24 +747,36 @@ contains
       if (associated(This_Node%child)) then
         Child_Node => This_Node%child
 
+        ! Set the progenitor of the current node to its first child
         tree_first_progenitor(inode) = pch_to_df_index(Child_Node%index) - 1 ! 0-based 
+        ! Set the descendant of the progentor to the current node
         tree_first_descendant(inode_child) = pch_to_df_index(This_Node%index) - 1 ! 0-based
-      
+     
+        ! Nodes that are not the main child of their progenitor have -1 in first
+        ! descendant.
+        
         ! Create next progenitor links for non-leaf nodes
-        do while (associated(Child_Node%sibling)) 
+        do while (associated(Child_Node)) 
           inode_child = pch_to_df_index(Child_Node%index)
           if (inode_child.gt.nnodes) then
             write(*,*) Child_Node%index, inode_child, nnodes
             write(*,*) "FAIL"
             stop
           endif
-          ! The next progenitor is the sibling of the current child
-          tree_next_progenitor(inode_child) = pch_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
           ! All children descend to the same progenitor
-          tree_descendant(inode_child) = inode - 1 !  0-based
+          tree_descendant(inode_child) = pch_to_df_index(This_Node%index) - 1 !  0-based
 
           ! Loop until no more siblings of child.
-          if (associated(Child_Node%sibling)) Child_Node => Child_Node%sibling
+          if (associated(Child_Node%sibling)) then 
+            ! The next progenitor (a pointer from the child, not the parent) is the 
+            ! sibling of the current child
+            tree_next_progenitor(inode_child) = pch_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
+
+            ! Advance pointer to sibling
+            Child_Node => Child_Node%sibling
+          else
+            nullify(Child_Node)
+          end if
         end do
       else
         ! We have found a leaf node. The next tree walk step will put us on a
