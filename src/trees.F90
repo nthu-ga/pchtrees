@@ -318,6 +318,11 @@ program tree
     stop
   endif
 
+  ! Allocate mass resolution array
+  allocate(mres_for_level(nlev))
+  ! Default mres is the same for all levels
+  mres_for_level(:) = pa_output%mres
+
   if (pa_output%have_aexp_list) then
     ! Second pass: read expansion factors
     open(newunit=unit_num, file=pa_output%aexp_list, status="old", action="read", iostat=ierr)
@@ -658,6 +663,7 @@ program tree
   deallocate(wlev,alev,ifraglev)
   deallocate(nhalolev)
   deallocate(jphalo)
+  deallocate(mres_for_level)
 
 #ifdef WITH_HDF5
   ! Tidy up HDF5

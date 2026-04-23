@@ -28,7 +28,7 @@ module IO
   character(*), parameter :: DSET_TREE_FIRST_DESCENDANT = "/TreeHalos/TreeFirstDescendant"
   character(*), parameter :: DSET_TREE_DESCENDANT = "/TreeHalos/TreeDescendant"
   character(*), parameter :: DSET_TREE_SNAPNUM = "/TreeHalos/SnapNum"
-  character(*), parameter :: DSET_TREE_GROUP_M_CRIT200 = "/TreeHalos/Group_M_Crit200"
+  character(*), parameter :: DSET_TREE_GROUP_M_VIR = "/TreeHalos/Group_M_Virial"
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
   
   ! For PFOP
@@ -226,7 +226,7 @@ contains
     dataset_type = H5T_NATIVE_REAL
 
     ! FIXME
-    call create_extensible_dataset(filename, DSET_TREE_GROUP_M_CRIT200, dataset_type, &
+    call create_extensible_dataset(filename, DSET_TREE_GROUP_M_VIR, dataset_type, &
       & N_min, N_max, hdferr)
  
     ! FIXME
@@ -334,6 +334,9 @@ contains
 
     ! Write expansion factors at each output time
     call write_1d_array_real(filename, '/OutputTimes/ExpansionFactor', alev)
+
+    ! Write mres for each output time
+    call write_1d_array_real(filename, '/OutputTimes/MassResolution', mres_for_level)
 
     allocate(output_time_property(size(alev)))
 
@@ -820,7 +823,7 @@ contains
 
     ! Mass (these definitions are the same for EPS trees)
     call append_to_dataset(filename, DSET_TREE_SUBHALO_MASS, tree_mass, hdferr)
-    call append_to_dataset(filename, DSET_TREE_GROUP_M_CRIT200, tree_mass, hdferr)
+    call append_to_dataset(filename, DSET_TREE_GROUP_M_VIR, tree_mass, hdferr)
     deallocate(tree_mass)
 
     ! - We can guess the size for the number of trees we want and then shrink
