@@ -340,7 +340,7 @@ contains
 
     allocate(output_time_property(size(alev)))
 
-    ! Write critical density at each output time
+    ! Write critical overdensity at each output time
     do i=1,size(alev)
       output_time_property(i) = deltcrit(alev(i))
     end do
