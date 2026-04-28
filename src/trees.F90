@@ -623,6 +623,9 @@ program tree
         call write_output_times(file_path_pfop, alev)
       endif
 
+      ! Write parameters
+      call write_parameters(file_path_pfop)
+
     ! Write the per-tree data
     call write_tree_table_process_first_order_progenitors(file_path_pfop, trees_nfop, trees_mroot)
   endif
