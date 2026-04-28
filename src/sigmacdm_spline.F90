@@ -351,13 +351,17 @@ contains
     logical :: deleted
     character(len=1024) :: power_spec_lock_file
 
+    integer :: locked_count
+    integer, parameter :: MAX_LOCK_COUNT = 60
+
     ! First lock the power_spectrum files
     power_spec_lock_file = TRIM(pa_runtime%data_path)//'/Power_Spec/lock'
 
     !open (10,file=power_spec_lock_file,form='formatted',status='unknown')
     !write (10,*) 'locked'
     !close (10)
-    
+
+    locked_count = 0
     do
         inquire(file=trim(power_spec_lock_file) , exist=locked)
         if (.not. locked) then
@@ -365,6 +369,15 @@ contains
             open(unit=10, file=power_spec_lock_file, status="new", action="write", iostat=ierr)
             if (ierr == 0) exit  ! Lock acquired
         end if
+
+        locked_count = locked_count + 1
+        if (locked_count.gt.MAX_LOCK_COUNT) then
+          write(0,*)
+          write(0,*) 'Max lock file hits reached -- you might need to delete the lockfile yourself.'
+          write(0,*) 'Lockfile: ', trim(power_spec_lock_file)
+          stop 'make_spline(): FATAL - persistent lock file'
+        endif
+
         call sleep(1)  ! Wait 1 second
     end do
 
