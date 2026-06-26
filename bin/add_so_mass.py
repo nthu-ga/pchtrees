@@ -100,7 +100,7 @@ def main(filename):
         ps_pk = f.get_node('/Powerspec','Pk').read()
 
     # Set the colossus cosmology to that of the tree file (h = 1)
-    colo_cosmo_data = {'flat': True, 'H0': 100.0, 'Om0': Om0, 'Ob0': 0b0, 'sigma8': sigma8, 'ns': ns}
+    colo_cosmo_data = {'flat': True, 'H0': 100.0, 'Om0': Om0, 'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns}
     colo_cosmo = cosmology.setCosmology('pchtrees_input_cosmology', **colo_cosmo_data)
 
     # Write the tabulated PS to a temp file for the colossus routines
@@ -111,15 +111,15 @@ def main(filename):
     print(cosmology.current_cosmo)
     print()
 
-    # Compute SO masses assuming fiducial concentration.
-    c_input, c_err = concentration.modelIshiyama21(mvir_input,zred_input,'vir',
+    # Compute SO masses assuming fiducial concentration (virial mass definition).
+    Cvir_input, c_err = concentration.modelIshiyama21(mvir_input,zred_input,'vir',
                                                    ps_args=dict(path=temp_ps_file.name,model='ps_func'))
 
 
     print('Concentration errors (1):', np.sum(~c_err), '/', len(c_err))
 
     M200c_out, R200c_out, _, Rvir_out = convert_SO_masses(mvir_input, zred_input,
-                                                          c_input=c_input,
+                                                          c_input=Cvir_input,
                                                           mdef_input='vir',mdef_output='200c')
 
     C200c_out, c_err = concentration.modelIshiyama21(mvir_input,zred_input,'200c',
@@ -139,7 +139,7 @@ def main(filename):
     append_hdf5_data(filename,'/TreeHalos','Group_C_Crit200_fid', C200c_out,
                     comment='Fiducial NFW concentration R_s/R_200c (Ishiyama21)',
                     overwrite = True)
-    append_hdf5_data(filename,'/TreeHalos','Group_C_Virial_fid',  C200c_out,
+    append_hdf5_data(filename,'/TreeHalos','Group_C_Virial_fid',  Cvir_input,
                     comment='Fiducial NFW concentration R_s/R_vir (Ishiyama21)',
                     overwrite = True)
 

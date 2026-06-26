@@ -3,6 +3,7 @@ import tables as tb
 import os
 import sys
 import tempfile
+import scipy.interpolate as spi
 
 import logging
 log = logging.getLogger('add_so_mass')
@@ -13,6 +14,11 @@ if modpath not in sys.path:
     sys.path.append(modpath)
 from colossus.cosmology import cosmology
 from colossus.halo      import profile_nfw, mass_so, concentration
+
+modpath = '/data/apcooper/sfw/coco_trees/py'
+if modpath not in sys.path:
+    sys.path.append(modpath)
+import coco_trees.trees as trees
 
 def append_hdf5_data(filename,dataset_path,dataset_name,data,
                      comment="",createparents=False,
@@ -93,13 +99,15 @@ def compile_mcoll(root,f=0.02,truncate=True,convert=True,
         return mcoll
 
 def iterate_for_c(mcoll, mcoll_z, z0=None, m0=None,
-                  C_FACTOR   = 400.0,
+                  C_FACTOR = 400.0,
                   iter_max=20, eps=0.01,
                   verbose=False, c_trial=10.0):
     """
     """
     RHO_FACTOR = 3/(4*np.pi)
     converged  = False
+
+    colo_cosmo = cosmology.getCurrent()
 
     minimum_mcoll = mcoll.min()
 
@@ -210,9 +218,90 @@ def main(filename):
     M = trees.PCHTreeFile(filename)
 
     with tb.open_file(filename,'r') as f:
-        redshift_list = f.root.OutputTimes.Redshift.read()[::-1]
-        # Confirm we have the required arrays
-        pass
+
+        # FIXME: Confirm we have the required arrays
+
+        # FIXME: these parameters could be read by the tree file reader.
+        # Assume flat so don't read Lambda0
+        Om0    = f.root.Parameters._v_attrs['cosmo_omega0'][0]
+        Ob0    = f.root.Parameters._v_attrs['cosmo_omegab'][0]
+        sigma8 = f.root.Parameters._v_attrs['pspec_sigma8'][0]
+        ns     = f.root.Parameters._v_attrs['pspec_nspec'][0]
+
+        # Set the colossus cosmology to that of the tree file (h = 1)
+        colo_cosmo_data = {'flat': True, 'H0': 100.0, 'Om0': Om0, 'Ob0': Ob0, 'sigma8': sigma8, 'ns': ns}
+        colo_cosmo = cosmology.setCosmology('pchtrees_input_cosmology', **colo_cosmo_data)
+
+    MIN_MCOLL_LENGTH = 3
+    LUDLOW_LITTLE_F  = 0.02
+    LUDLOW_C_FACTOR  = 400
+
+    # Arrays to hold concentrations for those halos we recompute here.
+    # The default is -1.
+    # FIXME some of these arrays could be float16
+    Cvir_output  = np.zeros(M.nnodes,dtype=np.float32) - 1
+
+    STATUS_NOT_ATTEMPTED = -1
+    STATUS_OK            = 0
+    STATUS_LIMITED_MCOLL = 1
+    STATUS_LOW_MRES      = 2
+    STATUS_NOT_CONVERGED = 3
+    Cvir_status = np.repeat(STATUS_NOT_ATTEMPTED, M.nnodes)
+
+    print(f'Have {(int(M.tree_table_ntrees)):d} trees to process')
+    for itree in range(M.tree_table_ntrees):
+        T = M.get_tree(itree)
+
+        # FIXME: also add first order progenitors
+        nodes_to_process = list()
+        # Add concentrations to the main branch only
+        MBW = T.host_main_branch_walker()
+        for n in MBW:
+            nodes_to_process.append(n)
+
+        print(f'Tree {itree:d}: {len(nodes_to_process):d} nodes to process')
+
+        for n in nodes_to_process:
+            # Compute collapsed mass history in m200c
+            # Requires the tree-reader to have already set m200c
+            if np.any(M.mres[:n.snapshot]) > n.m200c*LUDLOW_LITTLE_F:
+                # Mass resolution is too low at snapshots above this node.
+                Cvir_status[n.offset_in_tree_file] = STATUS_LOW_MRES
+                continue
+            else:
+                mcoll = compile_mcoll(n,f=LUDLOW_LITTLE_F,
+                                      mdef_from='200c',convert=False)
+            # FIXME: explain the following indexing
+            mcoll_z = M.output_redshift[n.snapshot-len(mcoll)+1:n.snapshot+1] # Some thought needed
+
+            # We give up trying to compute the concentration if:
+            # - the collapsed mass history is too short
+            # - the mass resolution is not high enough to resolve f*M0
+            # - the iterations to compute the concentration do not converge
+
+            # This trial value has already been computed by `add_so_mass` using some
+            # fiducial mean relation.
+            c_trial = n.c200c
+            if len(mcoll) > MIN_MCOLL_LENGTH:
+                c, diag = iterate_for_c(mcoll, mcoll_z, c_trial=c_trial,
+                                        C_FACTOR = LUDLOW_C_FACTOR,
+                                        verbose=False)
+                if diag['converged']:
+                    Cvir_output[n.offset_in_tree_file] = c
+                    Cvir_status[n.offset_in_tree_file] = STATUS_OK
+                else:
+                    Cvir_status[n.offset_in_tree_file] = STATUS_NOT_CONVERGED
+
+    print(f'Appending output to {filename:s}')
+    append_hdf5_data(filename,'/TreeHalos','Group_C_Virial_L16_History',  Cvir_output,
+                    comment='NFW concentration from L16 collapsed mass history',
+                    overwrite = True)
+    append_hdf5_data(filename,'/TreeHalos','Group_C_Virial_L16_History_Status',  Cvir_status,
+                    comment='Status flag for computation of Group_C_Virial_L16_History',
+                    overwrite = True)
+
+    # FIXME diagnostics and logging
+    print('Done!')
 
     # STORE PARAMETERS
     # Should stamp a ledger with the version of this script and the runtime, and a checksum?
