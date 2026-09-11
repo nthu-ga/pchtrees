@@ -685,7 +685,7 @@ contains
 
     ! Write TreeIndex (simple 0..N-1)
     allocate(tree_index(nnodes))
-    tree_index(:) = (/ (i, i = 0, nnodes - 19) /)
+    tree_index(:) = (/ (i, i = 0, nnodes - 1) /)
     call append_to_dataset(filename, DSET_TREE_INDEX, tree_index, hdferr)
     deallocate(tree_index)
 
