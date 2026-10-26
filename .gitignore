@@ -3,6 +3,7 @@ pchtrees
 Data/Power_Spec/*
 hardcopy.*
 *.hdf5
+.ipynb_checkpoints/
 
 build/
 examples/progenitors
