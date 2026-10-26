@@ -181,18 +181,25 @@ contains
     endif
 
     ! Check the PF exists. If it doesn't, we must be dumping the defaults.
-    inquire(file=file_name_in, exist=file_exists)
+    inquire(file=trim(file_name_in), exist=file_exists)
     if (.not.file_exists) then
-      if (dump_parameters) then     
+      if (dump_parameters) then
         dump_with_no_pf = .true.
       else
-        write (stderr, '("Error: Parameter file ", a, " not found")') file_name_in
+        write (stderr, *)
+        if (len(trim(file_name_in)).gt.0) then
+          write (stderr, '("Error: Parameter file ", a, " not found")') trim(file_name_in)
+        else
+          write (stderr, '("Error: Missing parameter file path!")')
+        endif
+        write (stderr, *)
         stop
       endif
     end if
 
-    ! An ugly hack to write a dummy parameter file so that parse_file has something to parse. If we don't parse the file, the
-    ! default parameters don't get set, so we can't dump them. Urgh.
+    ! An ugly hack to write a dummy parameter file so that parse_file has
+    ! something to parse. If we don't parse the file, the default parameters
+    ! don't get set, so we can't dump them. Urgh.
 
     if (dump_with_no_pf) then
       ! Generate a unique temporary file name
@@ -474,9 +481,11 @@ contains
         have_param_flag = .false.
       endif
     case default
+      write(*,*)
       write(*,*) 'FATAL: Failed reading parameter file'
       write(*,*) '       When reading optional string parameter: ', trim(param_name)
       write(*,*) '       Error code: ', temp_keyval%error_code
+      write(*,*)
       stop
     end select
   end subroutine read_optional_string_parameter

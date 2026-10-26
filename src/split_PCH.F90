@@ -1,4 +1,11 @@
-!
+module Split_PCH
+  use sigmacdm_spline, sigma => sigmacdm
+  implicit none
+
+  public :: split
+
+contains 
+
 ! split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
 !
 ! This version has been modified to allow a factor
@@ -105,7 +112,7 @@
 ! 
 !    9) Discard q' if q'<qmin
 ! 
-subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog) 
+subroutine split(m2,w,mmin,iseed,dwmax,dw,nprog,mprog) 
   !
   ! Uses
   use Numerical_Parameters
@@ -124,13 +131,9 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   ! Floats
   REAL m2,mmin,dwmax,dw,mprog(2)
 
-  !
   ! Functions
-  real ran3,sigma
-  !
-  ! Externals
-  external sigma
-  !
+  real ran3
+  
   ! Common blocks
   REAL :: dlsigdlm,sigsq_m2,sigsq_hf,qmin,diff_qmin,diff12_qmin
   REAL :: diff32_qmin,v_qmin,diff_hf,diff12_hf,diff32_hf,v_hf,sfac
@@ -162,7 +165,7 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
 
   ! 0) Since mmin will typically remain fixed we need only compute
   ! sigma(mmin) and slope alpha on the first call of this routine.
-  ! 
+   
 
 #ifdef STRICT_REAL_EQ
   if (.not.real_equal(mmin,mminlast)) then  
@@ -172,10 +175,10 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   !end if
   if (mmin.ne.mminlast) then  
 #endif
-     dlsigdlm=0.0 ! Set to avoid compiler warning
-     sig_qmin=sigma(mmin,dlsigdlm)
-     sigsq_qmin=sig_qmin**2 
-     mminlast=mmin
+     dlsigdlm   = 0.0 ! Set to avoid compiler warning
+     sig_qmin   = sigma(mmin,dlsigdlm)
+     sigsq_qmin = sig_qmin**2 
+     mminlast   = mmin
   end if
 #ifdef DEBUG
   ncall=ncall+1 ! Count number of calls to this routine
@@ -379,3 +382,4 @@ subroutine split(m2,w,mmin,sigma,iseed,dwmax,dw,nprog,mprog)
   return
 end subroutine split
 
+end module Split_PCH

@@ -10,6 +10,9 @@ end module Tree_Memory_Arrays
 module Tree_Memory_Arrays_Passable
   use Defined_Types
   type (TreeNode), pointer :: MergerTree(:)
+
+  ! APC  Holds per-level halo mass resolution
+  real, allocatable ::  mres_for_level(:)
 contains
 
   pure integer function Tree_Index(Node)

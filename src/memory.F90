@@ -31,7 +31,7 @@ subroutine memory(nhalo,nhalomax,ierr,nlev,mphalo,mres)
   real GROW,SHRINK,SHRINK_IF
   parameter (GROW=1.414,SHRINK=2.0,SHRINK_IF=4.0)
   integer MAXHALOS,MINHALOS,alloc_err,nhalomax_min
-  parameter(MAXHALOS=1e+07,MINHALOS=1e+04)
+  parameter(MAXHALOS=1e+08,MINHALOS=1e+04)
   save nhalo_prev,ifirst_local
   data ifirst_local /0/
   !

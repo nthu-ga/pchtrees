@@ -1,7 +1,7 @@
 program tree
   use Defined_Types ! defined_types.F90
   use Cosmological_Parameters ! cosmological_parameters.F90
-  use Power_Spectrum_Parameters ! parameters.F90
+  use Power_Spectrum
   use Runtime_Parameters
   use Time_Parameters ! parameters.F90
   use Tree_Memory_Arrays ! memory_modules.F90
@@ -12,7 +12,8 @@ program tree
   use Parameter_File
   use IO
   use Commandline
-  use git_version
+  use Sigmacdm_Spline
+  use Split_PCH
 #ifdef WITH_HDF5
   use HDF5
 #endif
@@ -28,10 +29,9 @@ program tree
   real,    allocatable :: wlev(:)
   real,    allocatable :: alev(:)
   integer, allocatable :: ifraglev(:)
-  real :: mphalo,ahalo,sigmacdm,zmin,zmax
+  real    :: mphalo,ahalo,zmin,zmax
   integer :: ierr,nhalomax,nhalo
   integer :: iter, iseed
-  EXTERNAL sigmacdm,split
 
   integer, allocatable :: nhalolev(:)
   integer, allocatable :: jphalo(:)
@@ -87,9 +87,6 @@ program tree
 
   ! Validation
   logical :: data_path_exists
-
-  write(*,*)
-  write(*,*) 'PCHTrees version: ', trim(version)
 
   ! Parse the command line
   call read_command_line_args()
@@ -230,7 +227,8 @@ program tree
     write(0,*)
     write(0,*) "Error! The pchtrees data directory was not found at the following path:"
     write(0,*) trim(pa_runtime%data_path)
-    write(0,*) "Find out where the data directory is and update your parameter file!" 
+    write(0,*) "Find out where the data directory is and update your parameter file!"
+    write(0,*)
     stop
   endif
 
@@ -271,6 +269,10 @@ program tree
   if (itrans < 0) then
     write (0,*) 'Using tabulated P(k) in ', trim(pkinfile)
   endif
+
+  ! Read the power spectrum from a file, or tabulate it from a function,
+  ! according to itrans. 
+  call init_power_spec_tables()
 
   ! Set initial random seed
   iseed0 = pa_runtime%iseed
@@ -315,6 +317,11 @@ program tree
     endif
     stop
   endif
+
+  ! Allocate mass resolution array
+  allocate(mres_for_level(nlev))
+  ! Default mres is the same for all levels
+  mres_for_level(:) = pa_output%mres
 
   if (pa_output%have_aexp_list) then
     ! Second pass: read expansion factors
@@ -503,7 +510,7 @@ program tree
       ! Build the tree
       write(*,*) 'Making tree:', mphalo
       call make_tree(mphalo,ahalo,pa_output%mres,alev,nlev,&
-        & iseed,split,sigmacdm, &
+        & iseed,split, &
         & nhalomax,ierr,nhalo,nhalolev,jphalo,wlev,ifraglev)
 
       iter=iter+1
@@ -616,6 +623,9 @@ program tree
         call write_output_times(file_path_pfop, alev)
       endif
 
+      ! Write parameters
+      call write_parameters(file_path_pfop)
+
     ! Write the per-tree data
     call write_tree_table_process_first_order_progenitors(file_path_pfop, trees_nfop, trees_mroot)
   endif
@@ -641,6 +651,11 @@ program tree
       call write_header(file_path, '/Header', nlev-1, & 
         & nhalos_per_file(ifile), sum(trees_nhalos), &
         & ntrees_per_file(ifile), ntrees, nfiles)
+    
+      ! Write the tabulated power spectrum
+      call write_power_spectrum(file_path)
+      ! Write the tabulated Sigma(M)
+      call write_sigma_table(file_path)
     end do
 #endif
   endif 
@@ -651,6 +666,7 @@ program tree
   deallocate(wlev,alev,ifraglev)
   deallocate(nhalolev)
   deallocate(jphalo)
+  deallocate(mres_for_level)
 
 #ifdef WITH_HDF5
   ! Tidy up HDF5
@@ -801,7 +817,9 @@ contains
     nlines = 0
     open(newunit=unit_num, file=trim(path), status="old", action="read", iostat=ierr)
     if (ierr /= 0) then
+        write(0,*)
         write(0,*) "Error opening expansion factor list!"
+        write(0,*)
         stop
     end if
 

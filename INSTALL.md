@@ -17,6 +17,10 @@ The code requires a Fortran 2003 compiler.
 Compilers known to work:     gfortran 9.4.0
 Compilers known not to work: gfortran 8.3.0
 
+### NTHU Note
+
+On CICA: module load gcc/9.4.0 hdf5
+
 ### Third party libraries included
 
 - TinyTOML (Thomas A. Marks) https://github.com/archermarx/TinyTOML

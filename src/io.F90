@@ -5,10 +5,11 @@ module IO
   use Tree_Memory_Arrays_Passable ! memory_modules.F90
   use Tree_Routines ! tree_routines.F90
   use Cosmological_Parameters
-  use Power_Spectrum_Parameters
+  use Power_Spectrum
   use Runtime_Parameters
   use Parameter_File
   use Overdensity
+  use Sigmacdm_Spline
   use git_version
   implicit none
 
@@ -27,7 +28,7 @@ module IO
   character(*), parameter :: DSET_TREE_FIRST_DESCENDANT = "/TreeHalos/TreeFirstDescendant"
   character(*), parameter :: DSET_TREE_DESCENDANT = "/TreeHalos/TreeDescendant"
   character(*), parameter :: DSET_TREE_SNAPNUM = "/TreeHalos/SnapNum"
-  character(*), parameter :: DSET_TREE_GROUP_M_CRIT200 = "/TreeHalos/Group_M_Crit200"
+  character(*), parameter :: DSET_TREE_GROUP_M_VIR = "/TreeHalos/Group_M_Virial"
   character(*), parameter :: DSET_TREE_SUBHALO_MASS = "/TreeHalos/SubhaloMass"
   
   ! For PFOP
@@ -225,7 +226,7 @@ contains
     dataset_type = H5T_NATIVE_REAL
 
     ! FIXME
-    call create_extensible_dataset(filename, DSET_TREE_GROUP_M_CRIT200, dataset_type, &
+    call create_extensible_dataset(filename, DSET_TREE_GROUP_M_VIR, dataset_type, &
       & N_min, N_max, hdferr)
  
     ! FIXME
@@ -334,9 +335,12 @@ contains
     ! Write expansion factors at each output time
     call write_1d_array_real(filename, '/OutputTimes/ExpansionFactor', alev)
 
+    ! Write mres for each output time
+    call write_1d_array_real(filename, '/OutputTimes/MassResolution', mres_for_level)
+
     allocate(output_time_property(size(alev)))
 
-    ! Write critical density at each output time
+    ! Write critical overdensity at each output time
     do i=1,size(alev)
       output_time_property(i) = deltcrit(alev(i))
     end do
@@ -384,6 +388,89 @@ contains
     deallocate(tree_property)
 
   end subroutine write_tree_table
+  
+  ! ############################################################ 
+  subroutine write_power_spectrum(filename)
+    implicit none
+
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
+
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    real :: sclk, sclpk
+
+    if (.not.sigmacdm_spline_setup_complete) then
+      stop
+    endif
+
+    ! gamma is a module variable from power_spectrum.F90
+
+    ! Log wavenumbers scale as gamma
+    sclk  = gamma
+    ! Powerspectrum scales as (a^2) * (gamma^3), where
+    ! a : factor that scales sigma
+    sclpk = (scla**2)*(gamma**3)
+
+    ! We output the rescaled power spectrum. A tabulated input spectrum is
+    ! considered "unscaled", so this rescaled output will *not* look like the
+    ! tabulated input. To recover the tabulated input, undo the scaling with the
+    ! reverse operation (i.e. take the log and multiply by k_rescale or
+    ! pk_rescale).
+
+    ! All scaled output should be directly comparable.
+
+    call write_1d_array_real(filename, '/Powerspec/k',  exp(lnktab))
+    call write_1d_array_real(filename, '/Powerspec/Pk', exp(lnpktab))
+    call write_1d_array_real(filename, '/Powerspec/k_rescale',  (/ sclk  /) )
+    call write_1d_array_real(filename, '/Powerspec/pk_rescale', (/ sclpk /) )
+
+    ! These are module variables from power_spectrum.F90
+    call write_1d_array_real(filename, '/Powerspec/sigma_rescale', (/ scla /) )
+    call write_1d_array_real(filename, '/Powerspec/mass_rescale',  (/ sclm /) )
+    call write_1d_array_real(filename, '/Powerspec/m8', (/ M8CRIT*omega0 /) )
+
+  end subroutine write_power_spectrum
+
+  ! ############################################################ 
+  subroutine write_sigma_table(filename)
+    !
+    ! Writes the sigma(M) spline table.
+    !
+    ! Mass and sigma are normalized according to the sigma8 given
+    ! in the parameter file (see sigmacdm_spline).
+    !
+    implicit none
+
+    ! NSPL is a module variable from sigmacdm_spline
+    real :: spline_sigma(NSPL)
+    real :: alpha_unused
+
+    character(len=*), intent(in)  :: filename      ! HDF5 file name
+
+    integer(hid_t) :: file_id, group_id
+    integer :: hdferr
+
+    integer :: i ! Loop counter
+
+    if (.not.sigmacdm_spline_setup_complete) then
+      stop
+    endif
+
+    do i=1, NSPL
+      ! nb. don't rescale the input mass here -- we're using the tabulated
+      ! masses, which are rescaled by construction.
+      call spline_interp(spline_mass(i), spline_sigma(i), alpha_unused)
+    end do
+
+    ! Scale sigma returned from the spline interpolation by scla, to ensure
+    ! the correct sigma8 normalization, and scale masses to be consistent with
+    ! the input values of Omega0 and gamma (*divide* by sclm, because spline_mass
+    ! is spline_mass = true_mass*sclm)
+    call write_1d_array_real(filename, '/Sigma/spline_mass',  spline_mass/sclm)
+    call write_1d_array_real(filename, '/Sigma/spline_sigma', spline_sigma*scla)
+  
+  end subroutine write_sigma_table
 
   ! ############################################################ 
   subroutine write_parameters(filename)
@@ -646,7 +733,8 @@ contains
     This_Node => Tree_Root
     inode   = 1
     ibranch = 1
-    
+   
+    ! Walk nodes in depth first order
     do while (associated(This_Node))
       tree_index_pch(inode) = This_Node%index - 1 ! 0-based
       
@@ -657,30 +745,45 @@ contains
       tree_snapnum(inode) = nlevels - This_Node%jlevel
       tree_mass(inode) = This_Node%mhalo
 
-      ! Record progenitor
+      ! Record progenitor(s) by looping over children
       ! Increment branch index after processing leaf nodes
       if (associated(This_Node%child)) then
         Child_Node => This_Node%child
-        
+
+        ! Set the progenitor of the current node to its first child
         tree_first_progenitor(inode) = pch_to_df_index(Child_Node%index) - 1 ! 0-based 
-        tree_first_descendant(inode) = pch_to_df_index(This_Node%index) - 1 ! 0-based 
-      
+        ! Set the descendant of the progentor to the current node
+        tree_first_descendant(inode_child) = pch_to_df_index(This_Node%index) - 1 ! 0-based
+     
+        ! Nodes that are not the main child of their progenitor have -1 in first
+        ! descendant.
+        
         ! Create next progenitor links for non-leaf nodes
-        do while (associated(Child_Node%sibling)) 
+        do while (associated(Child_Node)) 
           inode_child = pch_to_df_index(Child_Node%index)
           if (inode_child.gt.nnodes) then
             write(*,*) Child_Node%index, inode_child, nnodes
             write(*,*) "FAIL"
             stop
           endif
-          ! The next progenitor is the sibling of the current child
-          tree_next_progenitor(inode_child) = pch_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
           ! All children descend to the same progenitor
-          tree_descendant(inode_child) = inode - 1 !  0-based
+          tree_descendant(inode_child) = pch_to_df_index(This_Node%index) - 1 !  0-based
 
-          if (associated(Child_Node%sibling)) Child_Node => Child_Node%sibling
+          ! Loop until no more siblings of child.
+          if (associated(Child_Node%sibling)) then 
+            ! The next progenitor (a pointer from the child, not the parent) is the 
+            ! sibling of the current child
+            tree_next_progenitor(inode_child) = pch_to_df_index(Child_Node%sibling%index) - 1 ! 0-based
+
+            ! Advance pointer to sibling
+            Child_Node => Child_Node%sibling
+          else
+            nullify(Child_Node)
+          end if
         end do
       else
+        ! We have found a leaf node. The next tree walk step will put us on a
+        ! new branch. Increment the branch counter now.
         ibranch = ibranch + 1
       endif
 
@@ -720,7 +823,7 @@ contains
 
     ! Mass (these definitions are the same for EPS trees)
     call append_to_dataset(filename, DSET_TREE_SUBHALO_MASS, tree_mass, hdferr)
-    call append_to_dataset(filename, DSET_TREE_GROUP_M_CRIT200, tree_mass, hdferr)
+    call append_to_dataset(filename, DSET_TREE_GROUP_M_VIR, tree_mass, hdferr)
     deallocate(tree_mass)
 
     ! - We can guess the size for the number of trees we want and then shrink
@@ -852,7 +955,6 @@ contains
     call h5dclose_f(dset_id, hdferr)
     call h5fclose_f(file_id, hdferr)
   end subroutine create_extensible_dataset_2d
-
 
   ! ############################################################
   subroutine append_to_dataset(filename, dataset_name, new_data, hdferr)
