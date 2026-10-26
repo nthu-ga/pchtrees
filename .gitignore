@@ -9,6 +9,7 @@ build/
 examples/progenitors
 data/*/*spline.1
 *.jet.txt
+*.spline.[1-9]
 
 # GNU Profiling
 *.gcov
